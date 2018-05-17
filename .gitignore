@@ -1,0 +1,8 @@
+CMakeCache.txt
+.vscode
+CMakeFiles
+*.cmake
+bin/
+*.sh
+*.fits
+Makefile
