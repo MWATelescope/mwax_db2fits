@@ -7,7 +7,7 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 include_directories(${CMAKE_SOURCE_DIR}/include) # -I flags for compiler
 link_directories(${CMAKE_SOURCE_DIR}/lib)        # -L flags for linker
 
-set(PROGSRC src/main.c src/fitswriter.c)            # define sources
+set(PROGSRC src/main.c src/log.c src/fitswriter.c)            # define sources
 
 add_executable(mwa_xc_datacapture ${PROGSRC})       # define executable target prog, specify sources
 target_link_libraries(mwa_xc_datacapture cfitsio)   # -l flags for linking target
