@@ -7,5 +7,4 @@
 #ifndef XC_MAIN_H_
 #define XC_MAIN_H_
 
-void print_usage(void);
 #endif /* XC_MAIN_H_ */

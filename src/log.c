@@ -1,43 +1,66 @@
 #include <stdio.h>
-#include <time.h>
+#include <stdarg.h>
+#include "utils.h"
 #include "log.h"
 
 enum LOG_TYPE_ENUM LOG_LEVEL=LOG_DEBUG;
 
-void log_debug(const char* message)
+void log_debug(const char* message, ...)
 {
-    logx(LOG_DEBUG, "(DEBUG)", message);
+    char buffer[2048]="";
+    
+    va_list args;
+    va_start(args, message);
+    vsnprintf(buffer, sizeof(buffer), message, args);    
+    va_end(args);
+
+    logx(LOG_DEBUG, "(DEBUG)", buffer);
 }
 
-void log_info(const char* message)
+void log_info(const char* message, ...)
 {
-    logx(LOG_INFO, "(INFO)", message);
+    char buffer[2048]="";
+    
+    va_list args;
+    va_start(args, message);
+    vsnprintf(buffer, sizeof(buffer), message, args);    
+    va_end(args);
+
+    logx(LOG_INFO, "(INFO)", buffer);
 }
 
-void log_warning(const char* message)
+void log_warning(const char* message, ...)
 {
-    logx(LOG_WARNING, "(WARNING)", message);
+    char buffer[2048]="";
+    
+    va_list args;
+    va_start(args, message);
+    vsnprintf(buffer, sizeof(buffer), message, args);    
+    va_end(args);
+
+    logx(LOG_WARNING, "(WARNING)", buffer);
 }
 
-void log_error(const char* message)
+void log_error(const char* message, ...)
 {
-    logx(LOG_ERROR, "(ERROR)", message);
+    char buffer[2048]="";
+    
+    va_list args;
+    va_start(args, message);
+    vsnprintf(buffer, sizeof(buffer), message, args);    
+    va_end(args);
+
+    logx(LOG_ERROR, "(ERROR)", buffer);
 }
 
 void logx(enum LOG_TYPE_ENUM level, const char* levelstr, const char* message)
 {
     if (LOG_LEVEL>=level)
-    {
-        time_t rawtime;
-        struct tm *timeinfo;
+    {                
+        char timestring[20] = "";
 
-        time(&rawtime);
-        timeinfo = gmtime(&rawtime);
+        get_time_string_for_log(timestring);
         
-        int month = timeinfo->tm_mon + 1; 
-        int year = timeinfo->tm_year + 1900;
-        
-        fprintf(stdout, "%s%d-%02d-%02d %02d:%02d:%02d, %s, %s\n", ">", year, month, timeinfo->tm_mday, 
-                timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, levelstr, message);
+        fprintf(stdout, ">%s, %s, %s\n", timestring, levelstr, message);
     }
 }
