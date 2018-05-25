@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
+
 #include "main.h"
 #include "args.h"
 #include "fitsio.h"
@@ -14,6 +15,7 @@
 #include "log.h"
 #include "utils.h"
 
+int LOG_LEVEL=XC_LOG_DEBUG;
 globalArgs_t globalArgs;
 
 int main(int argc, char* argv[])

@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "log.h"
 
-enum LOG_TYPE_ENUM LOG_LEVEL=LOG_DEBUG;
+extern int LOG_LEVEL;
 
 void log_debug(const char* message, ...)
 {
@@ -14,7 +14,7 @@ void log_debug(const char* message, ...)
     vsnprintf(buffer, sizeof(buffer), message, args);    
     va_end(args);
 
-    logx(LOG_DEBUG, "(DEBUG)", buffer);
+    logx(XC_LOG_DEBUG, "(DEBUG)", buffer);
 }
 
 void log_info(const char* message, ...)
@@ -26,7 +26,7 @@ void log_info(const char* message, ...)
     vsnprintf(buffer, sizeof(buffer), message, args);    
     va_end(args);
 
-    logx(LOG_INFO, "(INFO)", buffer);
+    logx(XC_LOG_INFO, "(INFO)", buffer);
 }
 
 void log_warning(const char* message, ...)
@@ -38,7 +38,7 @@ void log_warning(const char* message, ...)
     vsnprintf(buffer, sizeof(buffer), message, args);    
     va_end(args);
 
-    logx(LOG_WARNING, "(WARNING)", buffer);
+    logx(XC_LOG_WARNING, "(WARNING)", buffer);
 }
 
 void log_error(const char* message, ...)
@@ -50,10 +50,10 @@ void log_error(const char* message, ...)
     vsnprintf(buffer, sizeof(buffer), message, args);    
     va_end(args);
 
-    logx(LOG_ERROR, "(ERROR)", buffer);
+    logx(XC_LOG_ERROR, "(ERROR)", buffer);
 }
 
-void logx(enum LOG_TYPE_ENUM level, const char* levelstr, const char* message)
+void logx(int level, const char* levelstr, const char* message)
 {
     if (LOG_LEVEL>=level)
     {                
