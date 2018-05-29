@@ -8,21 +8,26 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include "dada.h"
 #include "fitsio.h"
 #include "fitswriter.h"
-#include "log.h"
+#include "utils.h"
+#include "fitswriter.h"
+#include "multilog.h"
+
+extern dada_db_t ctx;
 
 // Create a blank new fits file called 'filename'
 // Populate it with data from the metafits file (fptr_metafits needs to point to an open valid fits file)
 // Fits pointer is passed to the caller
-int create_fits(fitsfile **fptr, const char *filename, metafits_info *mptr)
+int create_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
   
   // Check that the metafits data is there!
-  assert(mptr != NULL);
+  assert(ctx != NULL);
     
-  log_info("Creating new fits file %s...", filename);
+  multilog(ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
   int len = strlen(filename);
@@ -34,7 +39,7 @@ int create_fits(fitsfile **fptr, const char *filename, metafits_info *mptr)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error creating fits file: %s. Error: %d -- %s", filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
   
@@ -52,7 +57,7 @@ int create_fits(fitsfile **fptr, const char *filename, metafits_info *mptr)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_simple, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -64,7 +69,7 @@ int create_fits(fitsfile **fptr, const char *filename, metafits_info *mptr)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_bitpix, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -76,40 +81,40 @@ int create_fits(fitsfile **fptr, const char *filename, metafits_info *mptr)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_naxis, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
     return EXIT_FAILURE;
   }
    
   // INTTIME
   char key_inttime[FLEN_KEYWORD] = "INTTIME";
 
-  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &mptr->inttime, NULL, &status) )
+  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(ctx.obs_int_time), NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_inttime, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
   // PROJID
   char key_projid[FLEN_KEYWORD] = "PROJID";
 
-  if ( fits_write_key(*fptr, TSTRING, key_projid, mptr->project, NULL, &status) )
+  if ( fits_write_key(*fptr, TSTRING, key_projid, ctx.obs_proj_id, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_projid, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
   // OBSID
   char key_obsid[FLEN_KEYWORD] = "OBSID";
 
-  if ( fits_write_key(*fptr, TLONG, key_obsid, &mptr->obsid, NULL, &status) )
+  if ( fits_write_key(*fptr, TLONG, key_obsid, &(ctx.obs_id), NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error writing fits key: %s to file %s. Error: %d -- %s", key_obsid, filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -126,13 +131,13 @@ int close_fits(fitsfile *fptr)
     {
       char error_text[30]="";
       fits_get_errstatus(status, error_text);
-      log_error("Error closing fits file. Error: %d -- %s", status, error_text);
+      multilog(ctx.log, LOG_ERR, "Error closing fits file. Error: %d -- %s\n", status, error_text);
       return EXIT_FAILURE;
     }
   }
   else
   {
-    log_debug("Fits file is already closed.");
+    multilog(ctx.log, LOG_WARNING, "Fits file is already closed.\n");
   }
 
   return(EXIT_SUCCESS);
@@ -146,14 +151,14 @@ int open_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error openning fits file %s. Error: %d -- %s", filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
 }
 
-int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr)
+/*int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr)
 {  
   int status = 0;
   
@@ -161,12 +166,12 @@ int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr)
   float inttime = 0;  
   char key_inittime[FLEN_KEYWORD] = "INTTIME";
 
-  log_debug("Reading %s from metafits", key_inittime);  
+  multilog(ctx.log, LOG_INFO, "Reading %s from metafits\n", key_inittime);  
   if ( fits_read_key(fptr_metafits, TFLOAT, key_inittime, &inttime, NULL, &status) )
   {    
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error reading metafits key: %s in file %s. Error: %d -- %s", key_inittime, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_inittime, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->inttime = inttime;
@@ -175,12 +180,12 @@ int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr)
   char project[FLEN_VALUE];  
   char key_project[FLEN_KEYWORD] = "PROJECT";
 
-  log_debug("Reading PROJECT from metafits");
+  multilog(ctx.log, LOG_INFO, "Reading PROJECT from metafits\n");
   if ( fits_read_key(fptr_metafits, TSTRING, key_project, project, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error reading metafits key: %s in file %s. Error: %d -- %s", key_project, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_project, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->project = strdup(project);
@@ -189,15 +194,15 @@ int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr)
   long obsid = 0;  
   char key_gpstime[FLEN_KEYWORD] = "GPSTIME";
 
-  log_debug("Reading GPSTIME from metafits");
+  multilog(ctx.log, LOG_INFO, "Reading GPSTIME from metafits\n");
   if ( fits_read_key(fptr_metafits, TLONG, key_gpstime, &obsid, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    log_error("Error reading metafits key: %s in file %s. Error: %d -- %s", key_gpstime, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_gpstime, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->obsid = obsid;
 
   return (EXIT_SUCCESS);
-}
+}*/

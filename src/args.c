@@ -7,8 +7,8 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "multilog.h"
 #include "args.h"
-#include "log.h"
 
 int process_args(int argc, char* argv[])
 {
@@ -73,42 +73,35 @@ int process_args(int argc, char* argv[])
 
     // Check that mandatory parameters are passed
     if (!globalArgs.input_db_key) {
-        printf("Error: input shared memory key (-k | --key) is mandatory.\n");
+        fprintf(stderr, "Error: input shared memory key (-k | --key) is mandatory.\n");
         print_usage();
         exit(1);
     }
     
     if (!globalArgs.listen_interface) {
-        printf("Error: listen interface (-i | --listen_interface) is mandatory.\n");
+        fprintf(stderr, "Error: listen interface (-i | --listen_interface) is mandatory.\n");
         print_usage();
         exit(1);
     }
         
     if (globalArgs.listen_port == -1) {
-        printf("Error: port (-p | --listen_port) is mandatory.\n");
+        fprintf(stderr, "Error: port (-p | --listen_port) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
     if (!globalArgs.destination_url) {
-        printf("Error: destination url (-d | --destination_url) is mandatory.\n");
+        fprintf(stderr, "Error: destination url (-d | --destination_url) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
     if (!globalArgs.metafits_path) {
-        printf("Error: metafits file (-m | --metafits) is mandatory.\n");
+        fprintf(stderr, "Error: metafits file (-m | --metafits) is mandatory.\n");
         print_usage();
         exit(1);
     }
-
-    // print all of the options (this is debug)
-    log_debug("Command line options used:");
-    log_debug("* Shared Memory key:    %x", globalArgs.input_db_key);
-    log_debug("* Listening on:         %s port %d", globalArgs.listen_interface, globalArgs.listen_port);
-    log_debug("* Destination url:      %s", globalArgs.destination_url);
-    log_debug("* Metafits path:        %s", globalArgs.metafits_path);
-
+    
     return EXIT_SUCCESS;
 }
 

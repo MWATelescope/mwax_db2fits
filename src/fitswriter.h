@@ -9,6 +9,8 @@
 
 #define PROJ_ID_LEN FLEN_VALUE
 
+#include "fitsio.h"
+
 typedef struct 
 {
     long obsid;
@@ -17,8 +19,7 @@ typedef struct
 } metafits_info;
 
 int open_fits(fitsfile **fptr, const char* filename);
-int read_metafits(fitsfile *fptr_metafits, metafits_info *mptr);
-int create_fits(fitsfile **fptr, const char* filename, metafits_info *mptr);
+int create_fits(fitsfile **fptr, const char* filename);
 int close_fits(fitsfile *fptr);
 
 #endif /* XC_FITSWRITER_H_ */

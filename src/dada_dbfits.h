@@ -8,25 +8,15 @@
 #define XC_DADA_DBFITS_H_
 
 #include <assert.h>
+#include <stdlib.h>
+#include<string.h>
 
+#include "ascii_header.h"
 #include "dada_def.h"
 #include "dada_client.h"
 #include "dada_hdu.h"
 #include "multilog.h"
-
-typedef struct {
-    int internal_error;
-
-    // PSRDADA stuff
-    uint64_t header_size;     // size of the DADA header blocks
-    uint64_t block_size;      // size of the DADA data blocks
-    multilog_t *log;
-    char *curr_block;
-    char block_open;          // flag for currently open output HDU
-    uint64_t bytes_written;   // number of bytes currently written to output HDU
-    uint64_t bytes_read;
-
-} dada_db_t;
+#include "dada.h"
 
 // function prototypes
 int dada_dbfits_init(dada_db_t *ctx, dada_hdu_t *in);
