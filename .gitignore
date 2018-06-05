@@ -1,8 +1,10 @@
+bin/
+doc/
 CMakeCache.txt
-.vscode
 CMakeFiles
 *.cmake
-bin/
+Makefile
+.vscode
 *.sh
 *.fits
-Makefile
+*.metafits

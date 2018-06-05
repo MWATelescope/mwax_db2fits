@@ -23,10 +23,7 @@ extern dada_db_t ctx;
 int create_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
-  
-  // Check that the metafits data is there!
-  assert(ctx != NULL);
-    
+      
   multilog(ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
@@ -155,6 +152,44 @@ int open_fits(fitsfile **fptr, const char *filename)
     return EXIT_FAILURE;
   }
 
+  return EXIT_SUCCESS;
+}
+
+int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int polarisations, void *buffer, uint64_t bytes)
+{
+  // Each imagehdu will be [baseline][freq][pols]   
+  int status = 0;
+  int bitpix = -32;
+  long naxis = 2; 
+    
+  //long naxes[2] = { baselines, fine_channels * polarisations };
+  long naxes[2] = { 32, 8 };  // 256 elements
+  //float array[8][32];
+
+  fits_create_img(fptr, bitpix, naxis, naxes, &status);
+
+  if (status)
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error creating HDU in fits file. Error: %d -- %s\n", status, error_text);
+    return EXIT_FAILURE;
+  }  
+   
+  /* Write the array */
+  long nelements = bytes / (abs(bitpix) / 8);
+
+  // TINT=32bit int
+  fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status);
+  
+  if (status)
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(ctx.log, LOG_ERR, "Error writing data into HDU in fits file. Error: %d -- %s\n", status, error_text);
+    return EXIT_FAILURE;
+  }
+    
   return EXIT_SUCCESS;
 }
 

@@ -7,15 +7,15 @@
 #include "utils.h"
 #include "dada_dbfits.h"
 
-int dada_dbfits_init(dada_db_t* ctx, dada_hdu_t * in_hdu)
+int dada_dbfits_init(dada_db_t *ctx, dada_hdu_t *in_hdu)
 {
-  multilog_t * log = ctx->log;
+  multilog_t *log = ctx->log;
 
   // check the header block sizes for input
   ctx->header_size = ipcbuf_get_bufsz (in_hdu->header_block);
   
   // input blocks 
-  ctx->block_size = ipcbuf_get_bufsz ((ipcbuf_t *) in_hdu->data_block);  
+  ctx->block_size = ipcbuf_get_bufsz ((ipcbuf_t*)in_hdu->data_block);  
       
   multilog (log, LOG_INFO, "dada_db_init: completed\n");
 
@@ -209,14 +209,16 @@ int dada_dbfits_open(dada_client_t* client)
   
   // Create fits file for output  
   // Get timestamp  
-  char timestring[15];
-  get_time_string_for_fits(timestring);  
+  char timestring[15] = "";
+  // Override timestring
+  //get_time_string_for_fits(timestring);      
   int file_number = 0;  
     
   // Make a new filename- oooooooooo_YYYYMMDDhhmmss_gpuboxGG_FF.fits
   sprintf(ctx->fits_filename, "%ld_%s_gpubox%02d_%02d.fits", ctx->obs_id, timestring, ctx->obs_channel, file_number);
-      
-  if (create_fits(&ctx->fits_ptr, ctx->fits_filename)) {
+  
+  if (create_fits(&ctx->fits_ptr, ctx->fits_filename)) 
+  {
     multilog(log, LOG_ERR,"Error creating new fits file.\n");
     exit(EXIT_FAILURE);
   }
@@ -240,7 +242,8 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   // Close the fits file we created
   if (ctx->fits_ptr != NULL)
   {
-    if (close_fits(ctx->fits_ptr)) {
+    if (close_fits(ctx->fits_ptr)) 
+    {
       multilog(log, LOG_ERR,"Error closing fits file.\n");
       return -1;
     }
@@ -266,12 +269,22 @@ int64_t dada_dbfits_io (dada_client_t *client, void *buffer, uint64_t bytes)
 
   while (written < bytes)
   {    
-    // Write HDU here! Unless we are last block in which case write weights!
+    multilog(log, LOG_INFO, "Writing %d into new image HDU; written %d total so far\n", bytes, written); //buffer + written
     
-    wrote = to_write;
-    written += wrote;
-
-    multilog (log, LOG_INFO, "...getting data! input %d, written %d\n", bytes, written); //buffer + written
+    multilog(log, LOG_INFO,"About to write %d bytes.\n", bytes);
+    // Write HDU here! Unless we are last block in which case write weights!
+    // test case is 8x32 floats
+    if (create_fits_imghdu(ctx->fits_ptr, 8, 8, 4, buffer, bytes))    
+    {
+      // Error!
+      multilog(log, LOG_ERR, "Error Writing into new image HDU\n");
+      return EXIT_FAILURE;
+    }
+    else
+    {      
+      wrote = to_write;
+      written += wrote;
+    }
   }
 
   ctx->block_number += 1;
