@@ -10,35 +10,45 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "args.h"
-#include "fitsio.h"
 #include "dada_dbfits.h"
+#include "fitsio.h"
+#include "global.h"
+#include "health.h"
 #include "multilog.h"
 
-int quit = 0;
+#define STATUS_OFFLINE 0
+#define STATUS_RUNNING 1
+#define STATUS_SHUTTING_DOWN 2
 
-globalArgs_t globalArgs;
-
-dada_db_t ctx;
+pthread_mutex_t g_quit_mutex;
+int g_quit = 0;
+dada_db_t g_ctx;
 
 void sig_handler(int signum)
 {    
-    if (ctx.log != NULL)
-      multilog(ctx.log, LOG_INFO, "Received signal %d\n", signum);
-    else
-      printf("Received signal %d\n", signum);
-      
-    // If we have things running, tell them to stop!
-    quit = 1;
+  if (g_ctx.log != NULL)
+    multilog(g_ctx.log, LOG_INFO, "Received signal %d\n", signum);
+  else
+    printf("Received signal %d\n", signum);
+    
+  // If we have things running, tell them to stop!
+  set_quit(1);
 }
-
 
 int main(int argc, char* argv[])
 {	  
-  printf("Starting up mwa_xc_datacapture...");
+  // Logger
+  multilog_t* logger = 0;
+  logger = multilog_open ("mwa-xc-datacapture-log", 0);
+  multilog_add(logger, stderr);
+  multilog(logger, LOG_INFO, "Starting mwa_xc_datacapture...\n");
     
-  if (process_args(argc, argv))
+  globalArgs_t globalArgs;
+
+  if (process_args(argc, argv, &globalArgs))
   {
     exit(EXIT_FAILURE);
   }
@@ -46,27 +56,24 @@ int main(int argc, char* argv[])
   // DADA Primary Read Client
   dada_client_t* client = 0;
 
-  // Logger
-  multilog_t* logger = 0;
-
   // DADA Header plus Data Units
   dada_hdu_t* in_hdu = 0;  
   
   // DADA keys for input ring buffers
-  key_t in_key;
-
-  in_key = globalArgs.input_db_key;
-
-  logger = multilog_open ("mwa-xc-datacapture-log", 0);
-  ctx.log = logger;
-  multilog_add(logger, stderr);
+  key_t in_key = globalArgs.input_db_key;
+  
+  g_ctx.log = logger;  
 
   // print all of the options (this is debug)
-  multilog(ctx.log, LOG_INFO, "Command line options used:\n");
-  multilog(ctx.log, LOG_INFO, "* Shared Memory key:    %x\n", globalArgs.input_db_key);
-  multilog(ctx.log, LOG_INFO, "* Listening on:         %s port %d\n", globalArgs.listen_interface, globalArgs.listen_port);
-  multilog(ctx.log, LOG_INFO, "* Destination url:      %s\n", globalArgs.destination_url);
-  multilog(ctx.log, LOG_INFO, "* Metafits path:        %s\n", globalArgs.metafits_path);
+  multilog(g_ctx.log, LOG_INFO, "Command line options used:\n");
+  multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:    %x\n", globalArgs.input_db_key);
+  multilog(g_ctx.log, LOG_INFO, "* Metafits path:        %s\n", globalArgs.metafits_path);
+  multilog(g_ctx.log, LOG_INFO, "* Destination path:     %s\n", globalArgs.destination_path);
+
+  // This tells us if we need to quit
+  int quit = 0;
+  initialise_quit(); // Setup quit mutex
+  set_quit(quit);
 
   // Catch SIGINT
   signal(SIGINT, sig_handler);
@@ -76,61 +83,110 @@ int main(int argc, char* argv[])
   dada_hdu_set_key(in_hdu, in_key);
   if (dada_hdu_connect(in_hdu) < 0)
   {
-    multilog(ctx.log, LOG_ERR, "main: ERROR: could not connect to input HDU\n");
+    multilog(g_ctx.log, LOG_ERR, "main: ERROR: could not connect to input HDU\n");
     return EXIT_FAILURE;
   }
 
   if (dada_hdu_lock_read(in_hdu) < 0)
   {
-    multilog(ctx.log, LOG_ERR, "main: ERROR: could not lock read on input HDU\n");
+    multilog(g_ctx.log, LOG_ERR, "main: ERROR: could not lock read on input HDU\n");
     return EXIT_FAILURE;
   }
 
   // set up DADA read client
   client = dada_client_create ();
-  client->log = ctx.log;
+  client->log = g_ctx.log;
   client->data_block        = in_hdu->data_block;
   client->header_block      = in_hdu->header_block;
   client->open_function     = dada_dbfits_open;
   client->io_function       = dada_dbfits_io;
   client->io_block_function = dada_dbfits_io_block;
   client->close_function    = dada_dbfits_close;
-  client->direction         = dada_client_reader;  // actually do both read and write
-  client->context = &ctx;
+  client->direction         = dada_client_reader;  
+  client->context = &g_ctx;
+
+  // Launch Health thread  
+  pthread_t health_thread;
+
+  health_thread_args_t health_args;
+
+  // Zero the structure
+  memset(&health_args, 0, sizeof(health_args));
+  
+  health_args.log = logger;  
+  health_args.status = STATUS_RUNNING;
+  
+  pthread_create(&health_thread, NULL, health_thread_fn, (void*)&health_args);    
 
   // main loop
   while (!quit)
   {    
-    multilog(ctx.log, LOG_INFO, "main: dada_client_read()\n");
+    multilog(g_ctx.log, LOG_INFO, "main: dada_client_read()\n");
+
+    // Get stats
+    health_args.hdr_bufsz = ipcbuf_get_bufsz(client->header_block);
+
+    multilog(g_ctx.log, LOG_INFO, "hdr_bufsz=%"PRIu64"\n", health_args.hdr_bufsz);
+    // health_args.hdr_nbufs = ipcbuf_get_nbufs(client->header_block);
+    // health_args.hdr_bytes = health_args.hdr_nbufs * health_args.hdr_bufsz;
+
+    // health_args.data_bufsz = ipcbuf_get_bufsz((ipcbuf_t *)client->data_block);
+    // health_args.data_nbufs = ipcbuf_get_nbufs((ipcbuf_t *)client->data_block);
+    // health_args.data_bytes = health_args.data_nbufs * health_args.data_bufsz;
+    // health_args.n_readers = ipcbuf_get_nreaders((ipcbuf_t *)client->data_block);
+
+    // health_args.hdr_bufs_written = ipcbuf_get_write_count(client->header_block);
+    // health_args.hdr_bufs_read = ipcbuf_get_read_count(client->header_block);
+    // health_args.hdr_full_bufs = ipcbuf_get_nfull(client->header_block);
+    // health_args.hdr_clear_bufs = ipcbuf_get_nclear(client->header_block);
+    // health_args.hdr_available_bufs = (health_args.hdr_nbufs - health_args.hdr_full_bufs);
+
+    // int i_reader = 0;
+    // health_args.data_bufs_written = ipcbuf_get_write_count ((ipcbuf_t *)client->data_block);
+    // health_args.data_bufs_read = ipcbuf_get_read_count_iread ((ipcbuf_t *)client->data_block, i_reader);
+    // health_args.data_full_bufs = ipcbuf_get_nfull_iread ((ipcbuf_t *)client->data_block, i_reader);
+    // health_args.data_clear_bufs = ipcbuf_get_nclear_iread ((ipcbuf_t *)client->data_block, i_reader);
+    // health_args.data_available_bufs = (health_args.data_nbufs - health_args.data_full_bufs);   
 
     if (dada_client_read (client) < 0)
-      multilog(ctx.log, LOG_ERR, "main: error during transfer\n");
-    
-    if (quit)
-      client->quit = 1;
-    else
     {
-      multilog(ctx.log, LOG_INFO, "main: dada_hdu_unlock_read()\n");
+      multilog(g_ctx.log, LOG_ERR, "main: error during transfer\n");
+    }
+    
+    // Check quit status
+    quit = get_quit();
+
+    if (quit)
+    {      
+      health_args.status = STATUS_SHUTTING_DOWN;
+      client->quit = 1;
+    }
+    else
+    {      
+      multilog(g_ctx.log, LOG_INFO, "main: dada_hdu_unlock_read()\n");
       if (dada_hdu_unlock_read (in_hdu) < 0)
       {
-        multilog(ctx.log, LOG_ERR, "main: could not unlock read on hdu\n");
-        quit = 1;
+        multilog(g_ctx.log, LOG_ERR, "main: could not unlock read on hdu\n");
+        return EXIT_FAILURE;
       }
         
-      multilog(ctx.log, LOG_INFO, "main: dada_hdu_lock_read()\n");
+      multilog(g_ctx.log, LOG_INFO, "main: dada_hdu_lock_read()\n");
       
       if (dada_hdu_lock_read(in_hdu) < 0)
       {
-        multilog (ctx.log, LOG_ERR, "could not lock read on hdu\n");
+        multilog (g_ctx.log, LOG_ERR, "could not lock read on hdu\n");
         return EXIT_FAILURE;
       }
     }    
   }
-    
-  multilog(ctx.log, LOG_INFO, "main: dada_hdu_disconnect()\n");
+
+  // Wait for health thread to terminate  
+  pthread_join(health_thread, NULL);  
+
+  multilog(g_ctx.log, LOG_INFO, "main: dada_hdu_disconnect()\n");
   if (dada_hdu_disconnect (in_hdu) < 0)
   {
-    multilog(ctx.log, LOG_ERR, "main: failed to disconnect HDU\n");
+    multilog(g_ctx.log, LOG_ERR, "main: failed to disconnect HDU\n");
     return EXIT_FAILURE;
   }
 
@@ -140,6 +196,9 @@ int main(int argc, char* argv[])
 
   // close log
   multilog_close(logger);
+
+  // Destroy mutexes
+  destroy_quit();
 
   return EXIT_SUCCESS;  
 }

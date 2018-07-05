@@ -1,11 +1,13 @@
-/*
- * utils.h
+/**
+ * @file utils.h
+ * @author Greg Sleap
+ * @date 21 May 2018
+ * @brief This is the header for the code that handles misc functions like time and formatting
  *
- *  Created on: 21-May-2018
- *      Author: Greg Sleap
  */
 #ifndef XC_UTILS_H_
 #define XC_UTILS_H_
+
 #include <time.h>
 
 int get_time_struct(struct tm **out_timeinfo);

@@ -1,8 +1,9 @@
-/*
- * dada_dbfits.c
+/**
+ * @file dada_dbfits.c
+ * @author Greg Sleap
+ * @date 23 May 2018
+ * @brief This is the code that drives the ring buffers
  *
- *  Created on: 23-May-2018
- *      Author: Greg Sleap
  */
 #include "utils.h"
 #include "dada_dbfits.h"
@@ -193,7 +194,7 @@ int dada_dbfits_open(dada_client_t* client)
 
   // Check transfer size read in from header matches what we expect from the other params
   // +1 is for the weights!
-  long expected_bytes = (ctx->obs_pols*8)*((ctx->obs_tiles*(ctx->obs_tiles+1))/2)*((ctx->obs_bandwidth/ctx->obs_freq_res)+1);
+  long expected_bytes = (ctx->obs_pols*8)*((ctx->obs_tiles*(ctx->obs_tiles+1))/2)*((ctx->obs_bandwidth/ctx->obs_freq_res));
   
   if (expected_bytes != ctx->transfer_size)
   {

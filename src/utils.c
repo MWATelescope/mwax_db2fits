@@ -1,8 +1,9 @@
-/*
- * utils.c
+/**
+ * @file utils.c
+ * @author Greg Sleap
+ * @date 21 May 2018
+ * @brief This is the code that handles misc functions like time and formatting
  *
- *  Created on: 21-May-2018
- *      Author: Greg Sleap
  */
 #include <stdlib.h>
 #include <stdio.h>

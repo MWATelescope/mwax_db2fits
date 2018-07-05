@@ -1,15 +1,16 @@
-/*
- * dada_dbfits.h
+/**
+ * @file dada_dbfits.h
+ * @author Greg Sleap
+ * @date 23 May 2018
+ * @brief This is the header for the code that drives the ring buffers
  *
- *  Created on: 23-May-2018
- *      Author: Greg Sleap
  */
 #ifndef XC_DADA_DBFITS_H_
 #define XC_DADA_DBFITS_H_
 
 #include <assert.h>
 #include <stdlib.h>
-#include<string.h>
+#include <string.h>
 
 #include "ascii_header.h"
 #include "dada_def.h"

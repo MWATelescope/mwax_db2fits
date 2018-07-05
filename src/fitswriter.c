@@ -1,8 +1,9 @@
-/*
- * fitswriter.c
+/**
+ * @file fitswriter.c
+ * @author Greg Sleap
+ * @date 15 May 2018
+ * @brief This is the code that handles writing fits files
  *
- *  Created on: 15-May-2018
- *      Author: Greg Sleap
  */
 #include <errno.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@
 #include "fitswriter.h"
 #include "multilog.h"
 
-extern dada_db_t ctx;
+extern dada_db_t g_ctx;
 
 // Create a blank new fits file called 'filename'
 // Populate it with data from the metafits file (fptr_metafits needs to point to an open valid fits file)
@@ -24,7 +25,7 @@ int create_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
       
-  multilog(ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
+  multilog(g_ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
   int len = strlen(filename);
@@ -36,7 +37,7 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
   
@@ -54,7 +55,7 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -66,7 +67,7 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -78,40 +79,40 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
     return EXIT_FAILURE;
   }
    
   // INTTIME
   char key_inttime[FLEN_KEYWORD] = "INTTIME";
 
-  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(ctx.obs_int_time), NULL, &status) )
+  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(g_ctx.obs_int_time), NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
   // PROJID
   char key_projid[FLEN_KEYWORD] = "PROJID";
 
-  if ( fits_write_key(*fptr, TSTRING, key_projid, ctx.obs_proj_id, NULL, &status) )
+  if ( fits_write_key(*fptr, TSTRING, key_projid, g_ctx.obs_proj_id, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
   // OBSID
   char key_obsid[FLEN_KEYWORD] = "OBSID";
 
-  if ( fits_write_key(*fptr, TLONG, key_obsid, &(ctx.obs_id), NULL, &status) )
+  if ( fits_write_key(*fptr, TLONG, key_obsid, &(g_ctx.obs_id), NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -128,13 +129,13 @@ int close_fits(fitsfile *fptr)
     {
       char error_text[30]="";
       fits_get_errstatus(status, error_text);
-      multilog(ctx.log, LOG_ERR, "Error closing fits file. Error: %d -- %s\n", status, error_text);
+      multilog(g_ctx.log, LOG_ERR, "Error closing fits file. Error: %d -- %s\n", status, error_text);
       return EXIT_FAILURE;
     }
   }
   else
   {
-    multilog(ctx.log, LOG_WARNING, "Fits file is already closed.\n");
+    multilog(g_ctx.log, LOG_WARNING, "Fits file is already closed.\n");
   }
 
   return(EXIT_SUCCESS);
@@ -148,7 +149,7 @@ int open_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -172,7 +173,7 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error creating HDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error creating HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }  
    
@@ -186,7 +187,7 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error writing data into HDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing data into HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
     
@@ -201,12 +202,12 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
   float inttime = 0;  
   char key_inittime[FLEN_KEYWORD] = "INTTIME";
 
-  multilog(ctx.log, LOG_INFO, "Reading %s from metafits\n", key_inittime);  
+  multilog(g_ctx.log, LOG_INFO, "Reading %s from metafits\n", key_inittime);  
   if ( fits_read_key(fptr_metafits, TFLOAT, key_inittime, &inttime, NULL, &status) )
   {    
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_inittime, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_inittime, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->inttime = inttime;
@@ -215,12 +216,12 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
   char project[FLEN_VALUE];  
   char key_project[FLEN_KEYWORD] = "PROJECT";
 
-  multilog(ctx.log, LOG_INFO, "Reading PROJECT from metafits\n");
+  multilog(g_ctx.log, LOG_INFO, "Reading PROJECT from metafits\n");
   if ( fits_read_key(fptr_metafits, TSTRING, key_project, project, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_project, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_project, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->project = strdup(project);
@@ -229,12 +230,12 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
   long obsid = 0;  
   char key_gpstime[FLEN_KEYWORD] = "GPSTIME";
 
-  multilog(ctx.log, LOG_INFO, "Reading GPSTIME from metafits\n");
+  multilog(g_ctx.log, LOG_INFO, "Reading GPSTIME from metafits\n");
   if ( fits_read_key(fptr_metafits, TLONG, key_gpstime, &obsid, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_gpstime, fptr_metafits->Fptr->filename, status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error reading metafits key: %s in file %s. Error: %d -- %s\n", key_gpstime, fptr_metafits->Fptr->filename, status, error_text);
     return EXIT_FAILURE;
   }
   mptr->obsid = obsid;

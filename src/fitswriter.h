@@ -1,8 +1,9 @@
-/*
- * fitswriter.h
+/**
+ * @file fitswriter.h
+ * @author Greg Sleap
+ * @date 15 May 2018
+ * @brief This is the header for the code that handles writing fits files
  *
- *  Created on: 15-May-2018
- *      Author: Greg Sleap
  */
 #ifndef XC_FITSWRITER_H_
 #define XC_FITSWRITER_H_
@@ -11,12 +12,12 @@
 
 #include "fitsio.h"
 
-typedef struct 
+/*typedef struct 
 {
     long obsid;
     float inttime;
     char* project;
-} metafits_info;
+} metafits_info;*/
 
 int open_fits(fitsfile **fptr, const char* filename);
 int create_fits(fitsfile **fptr, const char* filename);
