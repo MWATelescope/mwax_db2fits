@@ -192,9 +192,13 @@ int dada_dbfits_open(dada_client_t* client)
     return -1;
   }
 
+  // Calculate baselines
+  ctx->obs_baselines = ((ctx->obs_tiles*(ctx->obs_tiles+1))/2);
+  ctx->obs_fine_channels = ctx->obs_bandwidth/ctx->obs_freq_res;
+
   // Check transfer size read in from header matches what we expect from the other params
   // +1 is for the weights!
-  long expected_bytes = (ctx->obs_pols*8)*((ctx->obs_tiles*(ctx->obs_tiles+1))/2)*((ctx->obs_bandwidth/ctx->obs_freq_res));
+  long expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*8)*ctx->obs_baselines*ctx->obs_fine_channels;
   
   if (expected_bytes != ctx->transfer_size)
   {
@@ -216,7 +220,7 @@ int dada_dbfits_open(dada_client_t* client)
   int file_number = 0;  
     
   // Make a new filename- oooooooooo_YYYYMMDDhhmmss_gpuboxGG_FF.fits
-  sprintf(ctx->fits_filename, "%ld_%s_gpubox%02d_%02d.fits", ctx->obs_id, timestring, ctx->obs_channel, file_number);
+  sprintf(ctx->fits_filename, "%s/%ld_%s_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, timestring, ctx->obs_channel, file_number);
   
   if (create_fits(&ctx->fits_ptr, ctx->fits_filename)) 
   {
@@ -273,9 +277,8 @@ int64_t dada_dbfits_io (dada_client_t *client, void *buffer, uint64_t bytes)
     multilog(log, LOG_INFO, "Writing %d into new image HDU; written %d total so far\n", bytes, written); //buffer + written
     
     multilog(log, LOG_INFO,"About to write %d bytes.\n", bytes);
-    // Write HDU here! Unless we are last block in which case write weights!
-    // test case is 8x32 floats
-    if (create_fits_imghdu(ctx->fits_ptr, 8, 8, 4, buffer, bytes))    
+    // Write HDU here! Unless we are last block in which case write weights!    
+    if (create_fits_imghdu(ctx->fits_ptr, ctx->obs_baselines , ctx->obs_fine_channels, ctx->obs_pols*ctx->obs_pols, (char*)buffer, bytes))    
     {
       // Error!
       multilog(log, LOG_ERR, "Error Writing into new image HDU\n");
@@ -290,7 +293,7 @@ int64_t dada_dbfits_io (dada_client_t *client, void *buffer, uint64_t bytes)
 
   ctx->block_number += 1;
 
-  return (int64_t)written;
+  return written;
 }
 
 int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes, uint64_t block_id)

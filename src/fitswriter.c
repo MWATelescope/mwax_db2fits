@@ -28,8 +28,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   multilog(g_ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
-  int len = strlen(filename);
-  char* cfitsio_filename = malloc(len*sizeof(char));
+  int len = strlen(filename)+2;
+  char cfitsio_filename[len];
   sprintf(cfitsio_filename, "!%s", filename);
 
   // Create a new blank fits file
@@ -40,10 +40,7 @@ int create_fits(fitsfile **fptr, const char *filename)
     multilog(g_ctx.log, LOG_ERR, "Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
-  
-  // free the malloc'ed filename
-  free(cfitsio_filename);
-  
+    
   //
   // Add the core keywords
   //
@@ -121,6 +118,8 @@ int create_fits(fitsfile **fptr, const char *filename)
 
 int close_fits(fitsfile *fptr)
 {
+  multilog(g_ctx.log, LOG_DEBUG, "close_fits() called.\n");
+  
   int status = 0;
 
   if (fptr != NULL)
@@ -156,34 +155,32 @@ int open_fits(fitsfile **fptr, const char *filename)
   return EXIT_SUCCESS;
 }
 
-int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int polarisations, void *buffer, uint64_t bytes)
+int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int polarisations, char *buffer, uint64_t bytes)
 {
   // Each imagehdu will be [baseline][freq][pols]   
   int status = 0;
-  int bitpix = -32;
+  int bitpix = LONGLONG_IMG;  //complex(r,i)  = 2x4 bytes  == 8 bytes
   long naxis = 2; 
-    
-  //long naxes[2] = { baselines, fine_channels * polarisations };
-  long naxes[2] = { 32, 8 };  // 256 elements
-  //float array[8][32];
+  uint64_t axis1 = baselines;
+  uint64_t axis2 = (fine_channels+1) * polarisations;   // we add 1 because of weights
+  long naxes[2] = { axis1, axis2 };  // 10440 x 1028 elements
 
-  fits_create_img(fptr, bitpix, naxis, naxes, &status);
+  multilog(g_ctx.log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1, (long long)axis2);
 
-  if (status)
+  // Create new IMGHDU    
+  if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
     multilog(g_ctx.log, LOG_ERR, "Error creating HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }  
-   
+  
   /* Write the array */
   long nelements = bytes / (abs(bitpix) / 8);
 
-  // TINT=32bit int
-  fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status);
-  
-  if (status)
+  // TINT=32bit int    
+  if (fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);

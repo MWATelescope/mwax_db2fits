@@ -29,6 +29,7 @@ typedef struct {
     uint64_t bytes_read;
 
     // FITS info
+    char* destination_dir;
     fitsfile *fits_ptr;
     char fits_filename[44];
     
@@ -41,6 +42,8 @@ typedef struct {
     int obs_bandwidth;
     int obs_pols;
     int obs_freq_res;
+    int obs_baselines;
+    int obs_fine_channels;
     float obs_int_time; 
     long transfer_size;    
 } dada_db_t;

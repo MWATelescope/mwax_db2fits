@@ -16,14 +16,18 @@ int process_args(int argc, char* argv[], globalArgs_t* globalArgs)
     globalArgs->input_db_key = 0;    
     globalArgs->metafits_path = NULL;
     globalArgs->destination_path = NULL;
+    globalArgs->health_ip = NULL;
+    globalArgs->health_port = 0;
 
-    static const char *optString = "k:p:i:d:m:?";
+    static const char *optString = "k:m:d:i:p:?";
 
 	static const struct option longOpts[] =
 	{
 		{ "key", required_argument, NULL, 'k' },        
         { "metafits", required_argument, NULL, 'm' },
         { "destination", required_argument, NULL, 'd' },
+        { "health-ip", required_argument, NULL, 'i' },
+        { "health-port", required_argument, NULL, 'p' },
 	    { "help", no_argument, NULL, '?' },
 	    { NULL, no_argument, NULL, 0 }
 	};
@@ -48,6 +52,14 @@ int process_args(int argc, char* argv[], globalArgs_t* globalArgs)
                 globalArgs->metafits_path = optarg;
                 break;
 
+            case 'i':
+                globalArgs->health_ip = optarg;
+                break;
+            
+            case 'p':
+                globalArgs->health_port = atoi(optarg);
+                break;
+            
             case '?':
                 print_usage();
                 return EXIT_FAILURE;
@@ -78,7 +90,19 @@ int process_args(int argc, char* argv[], globalArgs_t* globalArgs)
         print_usage();
         exit(1);
     }
+
+    if (!globalArgs->health_ip) {
+        fprintf(stderr, "Error: health ip (-i | --health-ip) is mandatory.\n");
+        print_usage();
+        exit(1);
+    }
    
+    if (!globalArgs->health_port) {
+        fprintf(stderr, "Error: health port (-p | --health-port) is mandatory.\n");
+        print_usage();
+        exit(1);
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -92,5 +116,7 @@ void print_usage(void)
 	printf("  -k --key=KEY              Hexadecimal shared memory key\n");    
     printf("  -d --destination=PATH     Destination path for gpubox files\n");
     printf("  -m --metafits=PATH        Metafits directory path\n");
+    printf("  -i --health-ip=IP         Health UDP destination ip address\n");
+    printf("  -p --health-port=PORT     Health UDP destination port\n");
 	printf("  -? --help                 This help text\n");
 }

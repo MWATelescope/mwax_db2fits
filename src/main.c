@@ -69,6 +69,8 @@ int main(int argc, char* argv[])
   multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:    %x\n", globalArgs.input_db_key);
   multilog(g_ctx.log, LOG_INFO, "* Metafits path:        %s\n", globalArgs.metafits_path);
   multilog(g_ctx.log, LOG_INFO, "* Destination path:     %s\n", globalArgs.destination_path);
+  multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:        %s\n", globalArgs.health_ip);
+  multilog(g_ctx.log, LOG_INFO, "* Health UDP Port:      %d\n", globalArgs.health_port);
 
   // This tells us if we need to quit
   int quit = 0;
@@ -93,6 +95,9 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+  // Pass stuff to the context
+  g_ctx.destination_dir = globalArgs.destination_path;
+
   // set up DADA read client
   client = dada_client_create ();
   client->log = g_ctx.log;
@@ -102,7 +107,7 @@ int main(int argc, char* argv[])
   client->io_function       = dada_dbfits_io;
   client->io_block_function = dada_dbfits_io_block;
   client->close_function    = dada_dbfits_close;
-  client->direction         = dada_client_reader;  
+  client->direction         = dada_client_reader;    
   client->context = &g_ctx;
 
   // Launch Health thread  
@@ -115,6 +120,10 @@ int main(int argc, char* argv[])
   
   health_args.log = logger;  
   health_args.status = STATUS_RUNNING;
+  health_args.header_block = client->header_block;
+  health_args.data_block = (ipcbuf_t*)client->data_block;
+  health_args.health_udp_ip = globalArgs.health_ip;
+  health_args.health_udp_port = globalArgs.health_port;
   
   pthread_create(&health_thread, NULL, health_thread_fn, (void*)&health_args);    
 
@@ -122,32 +131,7 @@ int main(int argc, char* argv[])
   while (!quit)
   {    
     multilog(g_ctx.log, LOG_INFO, "main: dada_client_read()\n");
-
-    // Get stats
-    health_args.hdr_bufsz = ipcbuf_get_bufsz(client->header_block);
-
-    multilog(g_ctx.log, LOG_INFO, "hdr_bufsz=%"PRIu64"\n", health_args.hdr_bufsz);
-    // health_args.hdr_nbufs = ipcbuf_get_nbufs(client->header_block);
-    // health_args.hdr_bytes = health_args.hdr_nbufs * health_args.hdr_bufsz;
-
-    // health_args.data_bufsz = ipcbuf_get_bufsz((ipcbuf_t *)client->data_block);
-    // health_args.data_nbufs = ipcbuf_get_nbufs((ipcbuf_t *)client->data_block);
-    // health_args.data_bytes = health_args.data_nbufs * health_args.data_bufsz;
-    // health_args.n_readers = ipcbuf_get_nreaders((ipcbuf_t *)client->data_block);
-
-    // health_args.hdr_bufs_written = ipcbuf_get_write_count(client->header_block);
-    // health_args.hdr_bufs_read = ipcbuf_get_read_count(client->header_block);
-    // health_args.hdr_full_bufs = ipcbuf_get_nfull(client->header_block);
-    // health_args.hdr_clear_bufs = ipcbuf_get_nclear(client->header_block);
-    // health_args.hdr_available_bufs = (health_args.hdr_nbufs - health_args.hdr_full_bufs);
-
-    // int i_reader = 0;
-    // health_args.data_bufs_written = ipcbuf_get_write_count ((ipcbuf_t *)client->data_block);
-    // health_args.data_bufs_read = ipcbuf_get_read_count_iread ((ipcbuf_t *)client->data_block, i_reader);
-    // health_args.data_full_bufs = ipcbuf_get_nfull_iread ((ipcbuf_t *)client->data_block, i_reader);
-    // health_args.data_clear_bufs = ipcbuf_get_nclear_iread ((ipcbuf_t *)client->data_block, i_reader);
-    // health_args.data_available_bufs = (health_args.data_nbufs - health_args.data_full_bufs);   
-
+    
     if (dada_client_read (client) < 0)
     {
       multilog(g_ctx.log, LOG_ERR, "main: error during transfer\n");
