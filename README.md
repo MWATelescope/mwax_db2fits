@@ -1,12 +1,13 @@
 # mwa-xc-datacapture
 ## Dependencies
-* CFITSIO (https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html)
-* pkg-config (this is to ensure psrdada configure script works correctly)
-* hwloc (this is to enable the use of NUMA awareness in psrdada)
-* csh (required for building psrdada)
-* autoconf (required for building psrdada)
-* psrdada (http://psrdada.sourceforge.net):
-    ./bootstrap
-    ./configure
-    make
-    make install
+### CFITSIO 
+- See https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html
+### psrdada prerequisites:
+- pkg-config
+- libhwloc-dev (this is to enable the use of NUMA awareness in psrdada)
+- csh
+- autoconf
+- libtool
+### psrdada (http://psrdada.sourceforge.net/)
+- download the source from the cvs repo (http://psrdada.sourceforge.net/current/)
+- build (http://psrdada.sourceforge.net/current/build.shtml)
