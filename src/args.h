@@ -18,9 +18,9 @@ typedef struct
     char* metafits_path;
     char* health_ip;
     int health_port;
-} globalArgs_t;
+} globalArgs_s;
 
 void print_usage(void);
-int process_args(int argc, char* argv[], globalArgs_t* globalArgs);
+int process_args(int argc, char* argv[], globalArgs_s* globalArgs);
 
 #endif

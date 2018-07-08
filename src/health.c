@@ -14,7 +14,7 @@
 #include "health.h"
 #include "global.h"
 
-int collect_buffer_stats(health_data_t *health_data, ipcbuf_t *header_block, ipcbuf_t *data_block)
+int collect_buffer_stats(health_data_s *health_data, ipcbuf_t *header_block, ipcbuf_t *data_block)
 {
     // Get stats
     health_data->hdr_bufsz = ipcbuf_get_bufsz(header_block);
@@ -45,7 +45,7 @@ int collect_buffer_stats(health_data_t *health_data, ipcbuf_t *header_block, ipc
 
 void* health_thread_fn(void *args)
 {
-    health_thread_args_t *health_args = (health_thread_args_t*)args;
+    health_thread_args_s *health_args = (health_thread_args_s*)args;
 
     multilog(health_args->log, LOG_INFO, "Health: Thread started.\n");
 
@@ -82,12 +82,12 @@ void* health_thread_fn(void *args)
         quit = get_quit();    
 
         // Gather stats from buffers
-        health_data_t data;
+        health_data_s data;
         data.status = health_args->status;
         collect_buffer_stats(&data, health_args->header_block, health_args->data_block);        
 
         //send the message        
-        if (sendto(sock, &data, sizeof(health_data_t), 0, (struct sockaddr *) &si_other, slen) == -1)
+        if (sendto(sock, &data, sizeof(health_data_s), 0, (struct sockaddr *) &si_other, slen) == -1)
         {
             multilog(health_args->log, LOG_ERR, "Health: Could not open a socket to health IP: call to sendto() failed.\n");
             exit(EXIT_FAILURE);        

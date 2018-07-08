@@ -25,7 +25,7 @@
 
 pthread_mutex_t g_quit_mutex;
 int g_quit = 0;
-dada_db_t g_ctx;
+dada_db_s g_ctx;
 
 void sig_handler(int signum)
 {    
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
   multilog_add(logger, stderr);
   multilog(logger, LOG_INFO, "Starting mwa_xc_datacapture...\n");
     
-  globalArgs_t globalArgs;
+  globalArgs_s globalArgs;
 
   if (process_args(argc, argv, &globalArgs))
   {
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
   // Launch Health thread  
   pthread_t health_thread;
 
-  health_thread_args_t health_args;
+  health_thread_args_s health_args;
 
   // Zero the structure
   memset(&health_args, 0, sizeof(health_args));

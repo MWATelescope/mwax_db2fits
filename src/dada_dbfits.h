@@ -20,7 +20,7 @@
 #include "dada.h"
 
 // function prototypes
-int dada_dbfits_init(dada_db_t *ctx, dada_hdu_t *in);
+int dada_dbfits_init(dada_db_s *ctx, dada_hdu_t *in);
 int dada_dbfits_open(dada_client_t *client);
 int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written);
 int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes);

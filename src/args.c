@@ -11,7 +11,7 @@
 #include "multilog.h"
 #include "args.h"
 
-int process_args(int argc, char* argv[], globalArgs_t* globalArgs)
+int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
 {
     globalArgs->input_db_key = 0;    
     globalArgs->metafits_path = NULL;

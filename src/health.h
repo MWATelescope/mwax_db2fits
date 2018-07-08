@@ -19,7 +19,7 @@ typedef struct
     int status;
     char* health_udp_ip;
     int health_udp_port;
-} health_thread_args_t;
+} health_thread_args_s;
 
 #pragma pack(push, 1)
 typedef struct 
@@ -48,7 +48,7 @@ typedef struct
     uint64_t data_full_bufs;
     uint64_t data_clear_bufs;
     uint64_t data_available_bufs;
-} health_data_t;
+} health_data_s;
 #pragma pack(pop)
 
 #define HEALTH_SLEEP_SECONDS 1  // How often does the health thread send data?

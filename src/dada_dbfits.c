@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "dada_dbfits.h"
 
-int dada_dbfits_init(dada_db_t *ctx, dada_hdu_t *in_hdu)
+int dada_dbfits_init(dada_db_s *ctx, dada_hdu_t *in_hdu)
 {
   multilog_t *log = ctx->log;
 
@@ -29,7 +29,7 @@ int dada_dbfits_init(dada_db_t *ctx, dada_hdu_t *in_hdu)
 int dada_dbfits_open(dada_client_t* client)
 {
   assert(client != 0);
-  dada_db_t* ctx = (dada_db_t*) client->context;
+  dada_db_s* ctx = (dada_db_s*) client->context;
 
   multilog_t *log = (multilog_t *) client->log;
 
@@ -239,7 +239,7 @@ int dada_dbfits_open(dada_client_t* client)
 int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
 {
   assert (client != 0);
-  dada_db_t* ctx = (dada_db_t*) client->context;
+  dada_db_s* ctx = (dada_db_s*) client->context;
 
   multilog_t *log = (multilog_t *) client->log;
   multilog(log, LOG_INFO, "dada_db_close()\n");
@@ -262,7 +262,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
 int64_t dada_dbfits_io (dada_client_t *client, void *buffer, uint64_t bytes)
 {
   assert (client != 0);
-  dada_db_t* ctx = (dada_db_t*) client->context;
+  dada_db_s* ctx = (dada_db_s*) client->context;
 
   multilog_t * log = (multilog_t *) ctx->log;
   

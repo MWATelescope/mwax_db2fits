@@ -46,6 +46,6 @@ typedef struct {
     int obs_fine_channels;
     float obs_int_time; 
     long transfer_size;    
-} dada_db_t;
+} dada_db_s;
 
 #endif

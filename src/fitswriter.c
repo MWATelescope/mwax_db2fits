@@ -16,7 +16,7 @@
 #include "fitswriter.h"
 #include "multilog.h"
 
-extern dada_db_t g_ctx;
+extern dada_db_s g_ctx;
 
 // Create a blank new fits file called 'filename'
 // Populate it with data from the metafits file (fptr_metafits needs to point to an open valid fits file)
