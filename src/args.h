@@ -1,5 +1,5 @@
 /**
- * @file args.c
+ * @file args.h
  * @author Greg Sleap
  * @date 21 May 2018
  * @brief This is the header for the code that parses and validates command line arguments
@@ -8,7 +8,7 @@
 #ifndef XC_ARGS_H_
 #define XC_ARGS_H_
 
-#include "dada.h"
+#include <sys/ipc.h> // for key_t
 
 // Command line Args
 typedef struct
@@ -20,7 +20,7 @@ typedef struct
     int health_port;
 } globalArgs_s;
 
-void print_usage(void);
+void print_usage();
 int process_args(int argc, char* argv[], globalArgs_s* globalArgs);
 
 #endif

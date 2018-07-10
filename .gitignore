@@ -5,7 +5,6 @@ CMakeFiles
 *.cmake
 Makefile
 .vscode
-*.sh
 *.fits
 *.metafits
 tmp/

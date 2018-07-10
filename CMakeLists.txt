@@ -11,7 +11,8 @@ link_directories(${CMAKE_SOURCE_DIR}/lib)        # -L flags for linker
 set(PROGSRC src/main.c src/args.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 add_executable(mwa_xc_datacapture ${PROGSRC})       # define executable target prog, specify sources

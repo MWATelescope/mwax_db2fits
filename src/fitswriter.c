@@ -5,12 +5,13 @@
  * @brief This is the code that handles writing fits files
  *
  */
-#include <errno.h>
-#include <stdio.h>
 #include <assert.h>
+#include <errno.h>
+#include <fitsio.h>
+#include <stdio.h>
 #include <string.h>
-#include "dada.h"
-#include "fitsio.h"
+
+#include "global.h"
 #include "fitswriter.h"
 #include "utils.h"
 #include "fitswriter.h"
@@ -18,9 +19,13 @@
 
 extern dada_db_s g_ctx;
 
-// Create a blank new fits file called 'filename'
-// Populate it with data from the metafits file (fptr_metafits needs to point to an open valid fits file)
-// Fits pointer is passed to the caller
+/**
+ * 
+ *  @brief Creates a blank new fits file called 'filename' and populates it with data from the psrdada header.
+ *  @param[out] fptr pointer to the pointer of the fitsfile created.
+ *  @param[in] filename Full path and name of the fits file to create.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ */
 int create_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
@@ -116,20 +121,30 @@ int create_fits(fitsfile **fptr, const char *filename)
   return(EXIT_SUCCESS);
 }
 
-int close_fits(fitsfile *fptr)
+/**
+ * 
+ *  @brief Closes the fits file.
+ *  @param[in,out] fptr Pointer to a pointer to the fitsfile structure.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ */
+int close_fits(fitsfile **fptr)
 {
   multilog(g_ctx.log, LOG_DEBUG, "close_fits() called.\n");
   
   int status = 0;
 
-  if (fptr != NULL)
+  if (*fptr != NULL)
   {    
-    if (fits_close_file(fptr, &status))
+    if (fits_close_file(*fptr, &status))
     {
       char error_text[30]="";
       fits_get_errstatus(status, error_text);
       multilog(g_ctx.log, LOG_ERR, "Error closing fits file. Error: %d -- %s\n", status, error_text);
       return EXIT_FAILURE;
+    }
+    else
+    {
+      *fptr = NULL;
     }
   }
   else
@@ -140,6 +155,13 @@ int close_fits(fitsfile *fptr)
   return(EXIT_SUCCESS);
 }
 
+/**
+ * 
+ *  @brief Opens a fits file for reading.
+ *  @param[in,out] fptr Pointer to a pointer of the openned fits file.
+ *  @param[in] filename Full path/name of the file to be openned.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ */
 int open_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
@@ -155,15 +177,31 @@ int open_fits(fitsfile **fptr, const char *filename)
   return EXIT_SUCCESS;
 }
 
-int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int polarisations, char *buffer, uint64_t bytes)
+/**
+ * 
+ *  @brief Creates a new IMGHDU in an existing fits file.
+ *  @param[in] fptr Pointer to the fits file we will write to.
+ *  @param[in] unix_time The Unix time for this integration / timestep.
+ *  @param[in] unix_millisecond_time Number of milliseconds since the last integer of unix_time.
+ *  @param[in] marker The artificial counter we use to keep track of which integration/timestep this is within the observation (0 based).
+ *  @param[in] baselines The number of baselines in the data (used to calculate number of elements).
+ *  @param[in] fine_channels The number of fine channels (used to calculate number of elements).
+ *  @param[in] polarisations The number of pols in each antenna-normally 2 (used to calculate number of elements).
+ *  @param[in] int_time The integration time of the observation (seconds).
+ *  @param[in] buffer The pointer to the data to write into the HDU.
+ *  @param[in] bytes The number of bytes in the buffer to write.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ */
+int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, int baselines, int fine_channels, 
+                       int polarisations, float int_time, char *buffer, uint64_t bytes)
 {
-  // Each imagehdu will be [baseline][freq][pols]   
+  // Each imagehdu will be [baseline][freq][pols][real][imaginary]   
   int status = 0;
-  int bitpix = LONGLONG_IMG;  //complex(r,i)  = 2x4 bytes  == 8 bytes
+  int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes  == 8 bytes
   long naxis = 2; 
   uint64_t axis1 = baselines;
-  uint64_t axis2 = (fine_channels+1) * polarisations;   // we add 1 because of weights
-  long naxes[2] = { axis1, axis2 };  // 10440 x 1028 elements
+  uint64_t axis2 = (fine_channels+1) * polarisations * 2;   // we add 1 because of weights, we x2 as we store real and imaginary
+  long naxes[2] = { axis1, axis2 };  // 10440 x 2056 elements
 
   multilog(g_ctx.log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1, (long long)axis2);
 
@@ -175,11 +213,63 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
     multilog(g_ctx.log, LOG_ERR, "Error creating HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }  
+
+  // TIME  - cotter uses this to align each channel
+  char key_time[FLEN_KEYWORD] = "TIME";
+
+  if (fits_write_key(fptr, TLONG, key_time, &unix_time, (char *) "Unix time (seconds)", &status))
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing key %s into HDU. Error: %d -- %s\n", key_time, status, error_text);
+    return EXIT_FAILURE;
+  }
   
+  // MILLITIME - provides millisecond component of TIME
+  char key_millitim[FLEN_KEYWORD] = "MILLITIM";
+
+  if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME",&status))
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing key %s into HDU. Error: %d -- %s\n", key_millitim, status, error_text);
+    return EXIT_FAILURE;
+  }
+
+  // INTTIME
+  char key_inttime[FLEN_KEYWORD] = "INTTIME";
+
+  if (fits_write_key(fptr, TFLOAT, key_inttime, &int_time, (char*)"Integration time (s)", &status))
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key %s into HDU. Error: %d -- %s\n", key_inttime, status, error_text);
+    return EXIT_FAILURE;
+  }
+
+  // MARKER  
+  char key_marker[FLEN_KEYWORD] = "MARKER";
+
+  if (fits_write_key(fptr, TINT, key_marker, &marker, (char*)"Data offset marker (all channels should match)", &status))
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(g_ctx.log, LOG_ERR, "Error writing fits key %s into HDU. Error: %d -- %s\n", key_marker, status, error_text);
+    return EXIT_FAILURE;
+  }
+
   /* Write the array */
   long nelements = bytes / (abs(bitpix) / 8);
 
-  // TINT=32bit int    
+  // Check that number of elements * bytes per element matches what we expect  
+  u_int64_t expected_bytes = (axis1 * axis2 * (abs(bitpix) / 8));
+  if (bytes != expected_bytes)
+  {
+    multilog(g_ctx.log, LOG_ERR, "HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
+    return EXIT_FAILURE;
+  }
+
+  // Actually write the HDU data
   if (fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status))
   {
     char error_text[30]="";
@@ -187,7 +277,7 @@ int create_fits_imghdu(fitsfile *fptr, int baselines, int fine_channels, int pol
     multilog(g_ctx.log, LOG_ERR, "Error writing data into HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
-    
+      
   return EXIT_SUCCESS;
 }
 

@@ -27,6 +27,11 @@ pthread_mutex_t g_quit_mutex;
 int g_quit = 0;
 dada_db_s g_ctx;
 
+/**
+ * 
+ *  @brief This captures the relevant signal and set the g_quit variable so the program quits gracefully.
+ *  @param[in] signum Signal number to handle.
+  */
 void sig_handler(int signum)
 {    
   if (g_ctx.log != NULL)
@@ -38,6 +43,13 @@ void sig_handler(int signum)
   set_quit(1);
 }
 
+/**
+ * 
+ *  @brief This is main, duh!
+ *  @param[in] argc Count of arguments passed in from command line.
+ *  @param[in] argv Array of arguments passed in from command line.
+ *  @returns EXIT_SUCCESS on success, or any other value if there was an error. 
+ */
 int main(int argc, char* argv[])
 {	  
   // Logger

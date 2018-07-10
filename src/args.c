@@ -11,6 +11,14 @@
 #include "multilog.h"
 #include "args.h"
 
+/**
+ * 
+ *  @brief This function parses command line arguments. Returns success if all good.
+ *  @param[in] argc Count of arguments passed from main()
+ *  @param[in] argv[] Array of arguments passed from main()
+ *  @param[in] globalArgs Pointer to the structure where we put the parsed arguments.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ */
 int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
 {
     globalArgs->input_db_key = 0;    
@@ -106,7 +114,11 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
     return EXIT_SUCCESS;
 }
 
-void print_usage(void)
+/**
+ * 
+ *  @brief This is called to provide the user with the summary of usage/help
+ */
+void print_usage()
 {
 	printf("\nUsage: mwa_xc_datacapture [OPTION]...\n\n");
 	printf("This code will open the dada ringbuffer containing raw \n");

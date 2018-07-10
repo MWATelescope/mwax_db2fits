@@ -14,6 +14,14 @@
 #include "health.h"
 #include "global.h"
 
+/**
+ * 
+ *  @brief Collects the health stats and populates the heath_data structure. This is what gets sent out in binary form via UDP.
+ *  @param[in] health_data Pointer to the health_data_s struct to be populated.
+ *  @param[in] header_block Pointer to the header block buffer structure, where we get stats from.
+ *  @param[in] data_block Pointer to the data block buffer structure, where we get stats from.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ */
 int collect_buffer_stats(health_data_s *health_data, ipcbuf_t *header_block, ipcbuf_t *data_block)
 {
     // Get stats
@@ -40,9 +48,15 @@ int collect_buffer_stats(health_data_s *health_data, ipcbuf_t *header_block, ipc
     health_data->data_clear_bufs = ipcbuf_get_nclear_iread (data_block, i_reader);
     health_data->data_available_bufs = (health_data->data_nbufs - health_data->data_full_bufs);   
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
+/**
+ * 
+ *  @brief This is the main health thread function to send health data for this process via UDP.
+ *  @param[in] args Pointer to the arguments that main() passes to this function.
+ *  @returns void. 
+ */
 void* health_thread_fn(void *args)
 {
     health_thread_args_s *health_args = (health_thread_args_s*)args;
@@ -104,4 +118,6 @@ void* health_thread_fn(void *args)
     }
 
     multilog(health_args->log, LOG_INFO, "Health: Thread finished.\n");
+
+    return EXIT_SUCCESS;
 }

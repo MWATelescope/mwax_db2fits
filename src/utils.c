@@ -9,6 +9,12 @@
 #include <stdio.h>
 #include <time.h>
 
+/**
+ * 
+ *  @brief This populates the out_timeinfo structure with the current local time.
+ *  @param[out] out_timeinfo Pointer to the pointer where we will create the struct tm object.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ */
 int get_time_struct(struct tm **out_timeinfo)
 {
     time_t rawtime;
@@ -25,6 +31,12 @@ int get_time_struct(struct tm **out_timeinfo)
     return EXIT_SUCCESS;
 }
 
+/**
+ * 
+ *  @brief This populates the timestring with the current time.
+ *  @param[out] timestring Pointer to the string to be populated.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ */
 int get_time_string_for_fits(char *timestring)
 {
     struct tm *timeinfo;    
@@ -35,6 +47,12 @@ int get_time_string_for_fits(char *timestring)
     return EXIT_SUCCESS;
 }
 
+/**
+ * 
+ *  @brief This populates the timestring with the current time, but formatted for use in a log.
+ *  @param[out] timestring Pointer to the string to be populated.
+ *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ */
 int get_time_string_for_log(char *timestring)
 {
     struct tm *timeinfo;    
