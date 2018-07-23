@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
   multilog_t* logger = 0;
   logger = multilog_open ("mwa-xc-datacapture-log", 0);
   multilog_add(logger, stderr);
-  multilog(logger, LOG_INFO, "Starting mwa_xc_datacapture...\n");
+  multilog(logger, LOG_INFO, "Starting mwax_db2fits...\n");
     
   globalArgs_s globalArgs;
 

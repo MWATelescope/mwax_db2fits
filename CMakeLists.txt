@@ -1,6 +1,6 @@
 #CMakeLists.txt
 cmake_minimum_required(VERSION 3.5)
-project(mwa_xc_datacapture)
+project(mwax_db2fits)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -15,5 +15,5 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
-add_executable(mwa_xc_datacapture ${PROGSRC})       # define executable target prog, specify sources
-target_link_libraries(mwa_xc_datacapture pthread cfitsio psrdada m)   # -l flags for linking target
+add_executable(mwax_db2fits ${PROGSRC})       # define executable target prog, specify sources
+target_link_libraries(mwax_db2fits pthread cfitsio psrdada m)   # -l flags for linking target

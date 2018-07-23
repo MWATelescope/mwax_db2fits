@@ -120,7 +120,7 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
  */
 void print_usage()
 {
-	printf("\nUsage: mwa_xc_datacapture [OPTION]...\n\n");
+	printf("\nUsage: mwax_db2fits [OPTION]...\n\n");
 	printf("This code will open the dada ringbuffer containing raw \n");
     printf("visibility data from the MWA Crosse Correlator.\n");
     printf("It will then write out a fits file to be picked up by the \n");

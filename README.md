@@ -1,4 +1,5 @@
-# mwa-xc-datacapture
+# mwax-db2fits
+MWA Correlator (mwax): PSRDADA ringbuffer to FITS file converter
 ## Dependencies
 ### CFITSIO 
 - See https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html
