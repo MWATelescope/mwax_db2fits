@@ -5,8 +5,7 @@
  * @brief This is the header for the code that parses and validates command line arguments
  *
  */
-#ifndef XC_ARGS_H_
-#define XC_ARGS_H_
+#pragma once
 
 #include <sys/ipc.h> // for key_t
 
@@ -22,5 +21,3 @@ typedef struct
 
 void print_usage();
 int process_args(int argc, char* argv[], globalArgs_s* globalArgs);
-
-#endif

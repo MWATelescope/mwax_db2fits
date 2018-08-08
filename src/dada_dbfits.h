@@ -5,8 +5,7 @@
  * @brief This is the header for the code that drives the ring buffers
  *
  */
-#ifndef XC_DADA_DBFITS_H_
-#define XC_DADA_DBFITS_H_
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -24,5 +23,3 @@ int dada_dbfits_open(dada_client_t *client);
 int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written);
 int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes);
 int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes, uint64_t block_id);
-
-#endif

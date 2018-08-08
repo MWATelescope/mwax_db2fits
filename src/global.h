@@ -5,11 +5,11 @@
  * @brief This is the header for anything global 
  *
  */
-#ifndef XC_GLOBAL_H_
-#define XC_GLOBAL_H_
+#pragma once
 
-#include <pthread.h>
 #include <fitsio.h>
+#include <linux/limits.h>
+#include <pthread.h>
 #include <stdint.h>
 
 #include "fitswriter.h"
@@ -31,7 +31,7 @@ typedef struct {
     // FITS info
     char* destination_dir;
     fitsfile *fits_ptr;
-    char fits_filename[44];
+    char fits_filename[PATH_MAX];
     
     // Observation info
     long obs_id;
@@ -45,7 +45,7 @@ typedef struct {
     int obs_baselines;
     int obs_fine_channels;
     float obs_int_time; 
-    int obs_secs_per_subobs;
+    int obs_secs_per_subobs;    
     long transfer_size; 
     int obs_marker;   
 } dada_db_s;
@@ -54,5 +54,3 @@ int initialise_quit();
 int set_quit(int value);
 int get_quit();
 int destroy_quit();
-
-#endif

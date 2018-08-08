@@ -5,8 +5,7 @@
  * @brief This is the header for the code that provides health information to M&C
  *
  */
-#ifndef XC_HEALTH_H_
-#define XC_HEALTH_H_
+#pragma once
 
 #include "multilog.h"
 #include "dada_client.h"
@@ -54,5 +53,3 @@ typedef struct
 #define HEALTH_SLEEP_SECONDS 1  // How often does the health thread send data?
 
 void* health_thread_fn(void *args);
-
-#endif

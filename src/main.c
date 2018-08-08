@@ -121,6 +121,9 @@ int main(int argc, char* argv[])
   client->close_function    = dada_dbfits_close;
   client->direction         = dada_client_reader;    
   client->context = &g_ctx;
+  
+  // Set some useful params based on our ringbuffer config
+  g_ctx.block_size = ipcbuf_get_bufsz((ipcbuf_t *)(client->data_block));
 
   // Launch Health thread  
   pthread_t health_thread;
@@ -147,12 +150,13 @@ int main(int argc, char* argv[])
     if (dada_client_read (client) < 0)
     {
       multilog(g_ctx.log, LOG_ERR, "main: error during transfer\n");
+      set_quit(1);
     }
     
     // Check quit status
     quit = get_quit();
 
-    if (quit)
+    if(quit)
     {      
       health_args.status = STATUS_SHUTTING_DOWN;
       client->quit = 1;

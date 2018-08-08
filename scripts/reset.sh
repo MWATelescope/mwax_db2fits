@@ -28,7 +28,7 @@ echo "removing old test files"
 rm /tmp/*.fits
 
 echo "...instantiating ring buffers..."
-dada_db -d -k 0x1234
-dada_db -b 85858560 -n 40 -k 0x1234
+dada_db -d -k 0x5678
+dada_db -b 85858560 -n 40 -k 0x5678
 
 echo ring buffers created

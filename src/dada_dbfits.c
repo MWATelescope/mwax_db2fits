@@ -148,8 +148,7 @@ int dada_dbfits_open(dada_client_t* client)
     multilog(log, LOG_INFO, "OBS_BANDWIDTH:        %d kHz\n", ctx->obs_bandwidth);
     multilog(log, LOG_INFO, "OBS_POLS:             %d\n", ctx->obs_pols);
     multilog(log, LOG_INFO, "OBS_FREQ_RES:         %d kHz\n", ctx->obs_freq_res);
-    multilog(log, LOG_INFO, "OBS_INT_TIME:         %f sec\n", ctx->obs_int_time);
-    multilog(log, LOG_INFO, "OBS_SECS_PER_SUBOBS:  %d sec\n", ctx->obs_secs_per_subobs);
+    multilog(log, LOG_INFO, "OBS_INT_TIME:         %f sec\n", ctx->obs_int_time);        
     multilog(log, LOG_INFO, "TRANSFER_SIZE:        %lu bytes\n", ctx->transfer_size);
     
     if (!(ctx->obs_duration >= 8 && (ctx->obs_duration % 8 == 0)))
@@ -212,16 +211,16 @@ int dada_dbfits_open(dada_client_t* client)
 
     // Check transfer size read in from header matches what we expect from the other params
     // +1 is for the weights!
-    long expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*8)*ctx->obs_baselines*ctx->obs_fine_channels;
+    long expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*8)*ctx->obs_baselines*(ctx->obs_fine_channels+1);
     
-    if (expected_bytes != ctx->transfer_size)
+    if (expected_bytes != ctx->block_size)
     {
-      multilog(log, LOG_ERR, "TRANSFER_SIZE in header (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", ctx->transfer_size, expected_bytes);
+      multilog(log, LOG_ERR, "Ring buffer block size (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", ctx->block_size, expected_bytes);
       return EXIT_FAILURE;
     }
         
     client->transfer_bytes = 0;  
-    client->optimal_bytes = 64*1024*1024;
+    client->optimal_bytes = 0;
 
     // we do not want to explicitly transfer the DADA header
     client->header_transfer = 0;

@@ -5,13 +5,10 @@
  * @brief This is the header for the code that handles misc functions like time and formatting
  *
  */
-#ifndef XC_UTILS_H_
-#define XC_UTILS_H_
+#pragma once
 
 #include <time.h>
 
 int get_time_struct(struct tm **out_timeinfo);
 int get_time_string_for_fits(char *timestring);
 int get_time_string_for_log(char *timestring);
-
-#endif
