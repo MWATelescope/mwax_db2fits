@@ -13,7 +13,7 @@
  * 
  *  @brief This populates the out_timeinfo structure with the current local time.
  *  @param[out] out_timeinfo Pointer to the pointer where we will create the struct tm object.
- *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ *  @returns EXIT_SUCCESS on success. 
  */
 int get_time_struct(struct tm **out_timeinfo)
 {
@@ -35,7 +35,7 @@ int get_time_struct(struct tm **out_timeinfo)
  * 
  *  @brief This populates the timestring with the current time.
  *  @param[out] timestring Pointer to the string to be populated.
- *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ *  @returns EXIT_SUCCESS on success,. 
  */
 int get_time_string_for_fits(char *timestring)
 {
@@ -51,7 +51,7 @@ int get_time_string_for_fits(char *timestring)
  * 
  *  @brief This populates the timestring with the current time, but formatted for use in a log.
  *  @param[out] timestring Pointer to the string to be populated.
- *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error. 
+ *  @returns EXIT_SUCCESS on success. 
  */
 int get_time_string_for_log(char *timestring)
 {

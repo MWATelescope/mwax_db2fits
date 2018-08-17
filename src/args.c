@@ -17,7 +17,7 @@
  *  @param[in] argc Count of arguments passed from main()
  *  @param[in] argv[] Array of arguments passed from main()
  *  @param[in] globalArgs Pointer to the structure where we put the parsed arguments.
- *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
 {

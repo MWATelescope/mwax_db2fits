@@ -7,9 +7,9 @@
  */
 #pragma once
 
-#define PROJ_ID_LEN FLEN_VALUE
-
 #include "fitsio.h"
+
+#define FITS_SIZE_CUTOFF_BYTES 200000
 
 /*typedef struct 
 {

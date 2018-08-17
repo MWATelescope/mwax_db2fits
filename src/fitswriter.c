@@ -24,13 +24,13 @@ extern dada_db_s g_ctx;
  *  @brief Creates a blank new fits file called 'filename' and populates it with data from the psrdada header.
  *  @param[out] fptr pointer to the pointer of the fitsfile created.
  *  @param[in] filename Full path and name of the fits file to create.
- *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int create_fits(fitsfile **fptr, const char *filename)
 {
   int status = 0;
       
-  multilog(g_ctx.log, LOG_INFO, "Creating new fits file %s...\n", filename);
+  multilog(g_ctx.log, LOG_INFO, "create_fits(): Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
   int len = strlen(filename)+2;
@@ -42,8 +42,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
+    return -1;
   }
     
   //
@@ -57,8 +57,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
+    return -1;
   }
 
   // BITPIX
@@ -69,8 +69,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
+    return -1;
   }
 
   // NAXIS
@@ -81,19 +81,19 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
+    return -1;
   }
    
   // INTTIME
   char key_inttime[FLEN_KEYWORD] = "INTTIME";
-
-  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(g_ctx.obs_int_time), NULL, &status) )
+  float int_time_sec = (float)g_ctx.obs_int_time_msec / 1000.0;
+  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(int_time_sec), NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
+    return -1;
   }
 
   // PROJID
@@ -103,8 +103,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
+    return -1;
   }
 
   // OBSID
@@ -114,8 +114,8 @@ int create_fits(fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(g_ctx.log, LOG_ERR, "Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
-    return EXIT_FAILURE;
+    multilog(g_ctx.log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
+    return -1;
   }
 
   return(EXIT_SUCCESS);
@@ -187,13 +187,13 @@ int open_fits(fitsfile **fptr, const char *filename)
  *  @param[in] baselines The number of baselines in the data (used to calculate number of elements).
  *  @param[in] fine_channels The number of fine channels (used to calculate number of elements).
  *  @param[in] polarisations The number of pols in each antenna-normally 2 (used to calculate number of elements).
- *  @param[in] int_time The integration time of the observation (seconds).
+ *  @param[in] int_time The integration time of the observation (milliseconds).
  *  @param[in] buffer The pointer to the data to write into the HDU.
  *  @param[in] bytes The number of bytes in the buffer to write.
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
  */
 int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, int baselines, int fine_channels, 
-                       int polarisations, float int_time, char *buffer, uint64_t bytes)
+                       int polarisations, float int_time_msec, char *buffer, uint64_t bytes)
 {
   // Each imagehdu will be [baseline][freq][pols][real][imaginary]   
   int status = 0;
@@ -238,8 +238,8 @@ int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_ti
 
   // INTTIME
   char key_inttime[FLEN_KEYWORD] = "INTTIME";
-
-  if (fits_write_key(fptr, TFLOAT, key_inttime, &int_time, (char*)"Integration time (s)", &status))
+  float int_time_sec = (float)int_time_msec / 1000.0;
+  if (fits_write_key(fptr, TFLOAT, key_inttime, &int_time_sec, (char*)"Integration time (s)", &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
