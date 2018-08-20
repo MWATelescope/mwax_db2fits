@@ -268,7 +268,7 @@ int dada_dbfits_open(dada_client_t* client)
       // Check transfer size read in from header matches what we expect from the other params
       // +1 is for the weights!
       int bytes_per_complex = (ctx->nbit / 8) * 2; // Should be 4 bytes per float (32 bits) x2 for r,i
-      long expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*bytes_per_complex)*ctx->obs_baselines*(ctx->obs_fine_channels+1);
+      uint64_t expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*bytes_per_complex)*ctx->obs_baselines*(ctx->obs_fine_channels+1);
       
       if (expected_bytes != ctx->block_size)
       {
@@ -375,7 +375,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   dada_db_s* ctx = (dada_db_s*) client->context;
 
   multilog_t *log = (multilog_t *) client->log;
-  multilog(log, LOG_INFO, "dada_dbfits_close(): Started.\n");
+  multilog(log, LOG_INFO, "dada_dbfits_close(bytes_written=%ul): Started.\n", bytes_written);
   
   // Some sanity checks:
   // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
@@ -438,17 +438,14 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
   uint64_t wrote    = 0;
 
   multilog (log, LOG_DEBUG, "dada_dbfits_io(): Processing block %d.\n", ctx->block_number);
-
-  time_t unix_time = 0;
-  int unix_milliseconds_time = 0;
-  
+   
   while (written < bytes)
   {    
     multilog(log, LOG_INFO, "dada_dbfits_io(): Writing %d into new image HDU; Marker = %d.\n", bytes, ctx->obs_marker_number); 
         
     // Write HDU here! 
     // TODO: Unless we are last block in which case write weights!    
-    if (create_fits_imghdu(ctx->fits_ptr, unix_time, unix_milliseconds_time, ctx->obs_marker_number, 
+    if (create_fits_imghdu(ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
                            ctx->obs_baselines, ctx->obs_fine_channels, ctx->obs_pols*ctx->obs_pols,
                            ctx->obs_int_time_msec, (char*)buffer, bytes))    
     {

@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.5)
 project(mwax_db2fits)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include) # -I flags for compiler
 link_directories(${CMAKE_SOURCE_DIR}/lib)        # -L flags for linker
@@ -11,8 +14,10 @@ link_directories(${CMAKE_SOURCE_DIR}/lib)        # -L flags for linker
 set(PROGSRC src/main.c src/args.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wextra")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wextra")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 add_executable(mwax_db2fits ${PROGSRC})       # define executable target prog, specify sources

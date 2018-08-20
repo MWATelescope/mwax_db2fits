@@ -1,7 +1,7 @@
 #
-# test_reset
+# test_nicdb
 #
-# Run this to remove and recreate ring buffers
+# Run this to simulate data going to mwa_xc_data_capture
 #
 
 # create ring buffer
@@ -24,11 +24,11 @@
 # one reader for now
 # persistent mode
 # -c 0 <- use NUMA node
-echo "removing old test files"
-rm *.fits
+echo populating with junk 16 seconds worth of 0.4 sec data
+dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_1_header
+dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_2_header
+echo Observation 1 sent
 
-echo "...instantiating ring buffers..."
-dada_db -d -k 0x5678
-dada_db -b 85858560 -n 40 -k 0x5678 -p -l
-
-echo ring buffers created
+echo populating with junk 8 seconds worth of 0.4 sec data
+dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs2_1_header
+echo Observation 2 sent
