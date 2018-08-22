@@ -17,8 +17,39 @@
 
 #define HAVE_HWLOC      // This is used by the psrdada library to set if we have the hwloc library or not. This lib is used to abstract NUMA / architecture.
 
+#define MWAX_COMMAND_LEN 32 // Size of the command in PSRDADA header. E.g. "CAPTURE","QUIT","IDLE"
 #define UTC_START_LEN 20    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
 #define PROJ_ID_LEN 255     // Size of the Project ID used by the MWA metadata database
+
+// Keywords within the PSRDADA Header
+#define HEADER_POPULATED "POPULATED"                        // 0=header being assembled; 1=header is ready for reading
+#define HEADER_OBS_ID "OBS_ID"                              // Observation ID (GPS start time of obs)
+#define HEADER_SUBOBS_ID "SUBOBS_ID"                        // GPS start time of this 8 second sub observation
+#define HEADER_COMMAND "COMMAND"                            // Command to run: CAPTURE, IDLE, QUIT
+#define HEADER_UTC_START "UTC_START"                        // UTC start time of observation (string)
+#define HEADER_OBS_OFFSET "OBS_OFFSET"                      // Seconds since start of observation; e.g. 0,8,16,etc
+#define HEADER_NBIT "NBIT"                                  // Bits per value (nominally 32 for float)
+#define HEADER_NPOL "NPOL"                                  // Number of polarisations (nominally 2)
+#define HEADER_NTIMESAMPLES "NTIMESAMPLES"                  // How many high time resolution (VCS) samples do we get (per sec?)
+#define HEADER_NINPUTS "NINPUTS"                            // Number of inputs (tiles*pols) which were received by the vcs machines
+#define HEADER_NINPUTS_XGPU "NINPUTS_XGPU"                  // Number of inputs (tiles*pols) rounded up to the nearest 16 sent to xGPU
+#define HEADER_METADATA_BEAMS "METADATA_BEAMS"              // How many beams to form?
+#define HEADER_APPLY_WEIGHTS "APPLY_WEIGHTS"                // Does precorrelator apply weights?
+#define HEADER_APPLY_DELAYS "APPLY_DELAYS"                  // Does precorrelator apply delays?
+#define HEADER_INT_TIME_MSEC "INT_TIME_MSEC"                // Correlator mode: integrations every x milliseconds
+#define HEADER_FSCRUNCH_FACTOR "FSCRUNCH_FACTOR"            // How many 125 Hz ultra fine channels do we average together
+#define HEADER_TRANSFER_SIZE "TRANSFER_SIZE"                // Number of bytes of data to expect in this observation:
+                                                            // == baselines * (finechannels+1) * (pols^2) * (real_bytes + imaginary_bytes)
+                                                            // ==((NINPUTS_XGPU *(NINPUTS_XGPU+2))/8)*(NFINE_CHAN+1)*(NPOL^2)*(NBIT*2/8)
+#define HEADER_PROJ_ID "PROJ_ID"                            // Project code for this observation
+#define HEADER_EXPOSURE_SEC "EXPOSURE_SEC"                  // Duration of the observation in seconds (always a factor of 8)
+#define HEADER_COARSE_CHANNEL "COARSE_CHANNEL"              // Coarse channel number 
+#define HEADER_SECS_PER_SUBOBS "SECS_PER_SUBOBS"            // How many seconds are in a sub observation
+#define HEADER_UNIXTIME "UNIXTIME"                          // Unix time in seconds
+#define HEADER_UNIXTIME_MSEC "UNIXTIME_MSEC"                // Milliseconds portion of Unix time (0-999)
+#define HEADER_FINE_CHAN_WIDTH_HZ "FINE_CHAN_WIDTH_HZ"      // Width of fine channels post correlator (kHz)
+#define HEADER_NFINE_CHAN "NFINE_CHAN"                      // How many fine channels per coarse channel
+#define HEADER_BANDWIDTH_HZ "BANDWIDTH_HZ"                  // Bandwidth of a coarse channel
 
 typedef struct dada_db_s {
     // PSRDADA stuff
@@ -38,25 +69,30 @@ typedef struct dada_db_s {
     int fits_file_number;
     
     // Observation info
-    long obs_id;                    // ObsID (gps start time of observation)
-    char utc_start[UTC_START_LEN];  // UTC Start time of the observation 2018-08-08-08:00:00
-    char obs_proj_id[PROJ_ID_LEN];  // Project Code
-    int obs_channel_number;         // Coarse Channel number (1-24)
-    int obs_duration_sec;           // Duration (seconds) for this whole observation
-    int obs_tiles;                  // Number of tiles involved in ths observation
-    int obs_bandwidth_khz;          // Bandwidth in kHz of a coarse channel (e.g. 1280)
-    int obs_pols;                   // Number of polarisations from each tile (X,Y)
-    int obs_freq_res_khz;           // Frequency averaging / resolution for this observation (kHz)
-    int obs_baselines;              // Number of baselines: (tiles*(tiles+1) / 2)
-    int obs_fine_channels;          // Number of fine channels in this coarse channel
-    int obs_int_time_msec;          // Integration time (msec)
-    int obs_subobs_sec;             // Seconds per sub observation (should be fixed at 8)
-    long transfer_size_bytes;       // How many bytes are expected in this sub observation
-    int obs_marker_number;          // 0 based index of block number within this 8 sec subobds (used by the final fits file)
-    int obs_offset_sec;             // 0 based seconds offset from start of obs. 0 (sec) = this is the first 8 sec subobs, 8 (sec) = this is the 2nd 8 sec sub obs.
-    int nbit;                       // bits per sample e.g. 32 for a float
-    long unix_time;                 // UNIX time
-    int unix_time_msec;             // Milliseconds offset of UNIX time    
+    int populated;
+    long obs_id;
+    long subobs_id;
+    char command[MWAX_COMMAND_LEN];
+    char utc_start[UTC_START_LEN];
+    int obs_offset;
+    int nbit;
+    int npol;
+    int ninputs_xgpu;
+    int int_time_msec;
+    long transfer_size;
+    char proj_id[PROJ_ID_LEN];
+    int exposure_sec;    
+    int coarse_channel;
+    int secs_per_subobs;
+    long unix_time;
+    int unix_time_msec;
+    int fine_chan_width_hz;
+    int nfine_chan;
+    int bandwidth_hz;          
+    
+    // Not from header
+    int nbaselines;                        
+    int obs_marker_number;                     
 } dada_db_s;
 
 int initialise_quit();

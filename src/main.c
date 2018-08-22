@@ -90,17 +90,24 @@ int main(int argc, char* argv[])
   set_quit(quit);
 
   // Catch SIGINT
+  multilog(g_ctx.log, LOG_INFO, "main(): Configured to catching SIGINT.\n");
   signal(SIGINT, sig_handler);
 
   // create the input HDU
+  multilog(g_ctx.log, LOG_INFO, "main(): Creating HDU handle...\n");
   in_hdu = dada_hdu_create(logger);
+
+  multilog(g_ctx.log, LOG_INFO, "main(): Assigning key %x to HDU handle.\n", globalArgs.input_db_key);
   dada_hdu_set_key(in_hdu, in_key);
+
+  multilog(g_ctx.log, LOG_INFO, "main(): Connecting to HDU with key %x...\n", globalArgs.input_db_key);
   if (dada_hdu_connect(in_hdu) < 0)
   {
     multilog(g_ctx.log, LOG_ERR, "main: ERROR: could not connect to input HDU\n");
     return EXIT_FAILURE;
   }
 
+  multilog(g_ctx.log, LOG_INFO, "main(): Locking HDU %x handle for read...\n", globalArgs.input_db_key);
   if (dada_hdu_lock_read(in_hdu) < 0)
   {
     multilog(g_ctx.log, LOG_ERR, "main: ERROR: could not lock read on input HDU\n");
@@ -111,6 +118,7 @@ int main(int argc, char* argv[])
   g_ctx.destination_dir = globalArgs.destination_path;
 
   // set up DADA read client
+  multilog(g_ctx.log, LOG_INFO, "main(): Creating DADA client...\n", globalArgs.input_db_key);
   client = dada_client_create ();
   client->log = g_ctx.log;
   client->data_block        = in_hdu->data_block;
@@ -122,8 +130,9 @@ int main(int argc, char* argv[])
   client->direction         = dada_client_reader;    
   client->context = &g_ctx;
   
-  // Set some useful params based on our ringbuffer config
+  // Set some useful params based on our ringbuffer config  
   g_ctx.block_size = ipcbuf_get_bufsz((ipcbuf_t *)(client->data_block));
+  multilog(g_ctx.log, LOG_INFO, "main(): Block size is %lu bytes.\n", g_ctx.block_size);
 
   // Launch Health thread  
   pthread_t health_thread;
@@ -140,6 +149,7 @@ int main(int argc, char* argv[])
   health_args.health_udp_ip = globalArgs.health_ip;
   health_args.health_udp_port = globalArgs.health_port;
   
+  multilog(g_ctx.log, LOG_INFO, "main():Launching health thread...\n");
   pthread_create(&health_thread, NULL, health_thread_fn, (void*)&health_args);    
 
   // main loop

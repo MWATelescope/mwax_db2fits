@@ -87,7 +87,7 @@ int create_fits(fitsfile **fptr, const char *filename)
    
   // INTTIME
   char key_inttime[FLEN_KEYWORD] = "INTTIME";
-  float int_time_sec = (float)g_ctx.obs_int_time_msec / 1000.0;
+  float int_time_sec = (float)g_ctx.int_time_msec / 1000.0;
   if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(int_time_sec), NULL, &status) )
   {
     char error_text[30]="";
@@ -99,7 +99,7 @@ int create_fits(fitsfile **fptr, const char *filename)
   // PROJID
   char key_projid[FLEN_KEYWORD] = "PROJID";
 
-  if ( fits_write_key(*fptr, TSTRING, key_projid, g_ctx.obs_proj_id, NULL, &status) )
+  if ( fits_write_key(*fptr, TSTRING, key_projid, g_ctx.proj_id, NULL, &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);

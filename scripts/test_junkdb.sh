@@ -25,10 +25,10 @@
 # persistent mode
 # -c 0 <- use NUMA node
 echo populating with junk 16 seconds worth of 0.4 sec data
-dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_1_header
-dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_2_header
+dada_junkdb -b $[67897344*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_1_header
+dada_junkdb -b $[67897344*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs1_2_header
 echo Observation 1 sent
 
-echo populating with junk 8 seconds worth of 0.4 sec data
-dada_junkdb -b $[85858560*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs2_1_header
-echo Observation 2 sent
+#echo populating with junk 8 seconds worth of 0.4 sec data
+#dada_junkdb -b $[67897344*20] -g -m 0 -s 10000 -v -r 2048 -k 0x5678 test_obs2_1_header
+#echo Observation 2 sent

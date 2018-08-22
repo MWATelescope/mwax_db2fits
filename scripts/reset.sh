@@ -11,12 +11,12 @@
 # [baseline][freq][pols]
 #
 # complex(r,i)  = 2x4 bytes  == 8 bytes
-# polarisations = x2^2 == x4 == 32 bytes
-# baselines     = x10,440    == 334,080 bytes 
-# for 5kHz      = x(1280/5)  == x256 + 1 == 85,858,560 bytes 
+# polarisations NPOL         == x2^2 == x4 == 32 bytes
+# baselines     = (NINPUTS_XGPU * (NINPUTS_XGPU+2))/8 = (256*(256+2))/8 == 8256 * 32 bytes == 264,192 bytes 
+# for 5kHz      = (BANDWIDTH_HZ / 5000) = x(1280000/5000) == (x256 + 1) x 264,192 bytes == 67,897,344 bytes 
 # So the first 256 pol*baselines are visibilities, the final 1 is weights
 #
-# number of elements = 40  (40 timesteps of 200ms each)
+# number of elements = 40  (support a max of 40 timesteps of 200ms each i.e. the biggest subobs we can take)
 #              
 # shared memory key - 0x128
 # lock shared memory in RAM
@@ -29,6 +29,6 @@ rm *.fits
 
 echo "...instantiating ring buffers..."
 dada_db -d -k 0x5678
-dada_db -b 85858560 -n 40 -k 0x5678 -p -l
+dada_db -b 67897344 -n 40 -k 0x5678 -p -l
 
 echo ring buffers created

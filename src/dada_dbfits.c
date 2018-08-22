@@ -25,16 +25,23 @@ int dada_dbfits_open(dada_client_t* client)
 
   // get the obs_id of this subobservation
   long this_obs_id = 0;
-  if (ascii_header_get(client->header, "OBS_ID", "%lu", &this_obs_id) == -1)
+  if (ascii_header_get(client->header, HEADER_OBS_ID, "%lu", &this_obs_id) == -1)
   {
-    multilog(log, LOG_ERR, "dada_db_open(): OBS_ID not found in header.\n");
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_OBS_ID);
+    return -1;
+  }
+
+  long this_subobs_id = 0;
+  if (ascii_header_get(client->header, HEADER_SUBOBS_ID, "%lu", &this_subobs_id) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_SUBOBS_ID);
     return -1;
   }
 
   // Sanity check this obs_id
   if (!(this_obs_id > 0))
   {
-    multilog(log, LOG_ERR, "dada_db_open(): New OBS_ID is not greater than 0.\n");
+    multilog(log, LOG_ERR, "dada_db_open(): New %s is not greater than 0.\n", HEADER_OBS_ID);
     return -1;
   }
 
@@ -44,7 +51,7 @@ int dada_dbfits_open(dada_client_t* client)
     // We need a new fits file
     if (ctx->obs_id != this_obs_id)
     {
-      multilog(log, LOG_INFO, "dada_db_open(): New OBS_ID detected. Closing %lu, Starting %lu...\n", ctx->obs_id, this_obs_id);
+      multilog(log, LOG_INFO, "dada_db_open(): New %s detected. Closing %lu, Starting %lu...\n", HEADER_OBS_ID, ctx->obs_id, this_obs_id);
     }
     else
     {
@@ -75,200 +82,97 @@ int dada_dbfits_open(dada_client_t* client)
       ctx->block_number= 0;
 
       // fits info  
-      strncpy(ctx->fits_filename, "", PATH_MAX);
+      strncpy(ctx->fits_filename, "", PATH_MAX);      
 
-      // obs info
+      ctx->obs_id = 0;
+      ctx->subobs_id = 0;
+
+      // Read in all of the info from the header into our struct
+      if (read_dada_header(client))
+      {
+        // Error processing in header!
+        multilog(log, LOG_ERR,"dada_db_open(): Error processing header.\n");
+        return -1;
+      }
+
+      /* Set the obsid & sub obsid */
       ctx->obs_id = this_obs_id;
-      strncpy(ctx->utc_start, "", UTC_START_LEN);
-      ctx->obs_duration_sec = 0;
-      ctx->obs_channel_number = 0;
-      strncpy(ctx->obs_proj_id, "", PROJ_ID_LEN);
-      ctx->obs_tiles = 0;
-      ctx->obs_bandwidth_khz = 0;
-      ctx->obs_pols = 0;
-      ctx->obs_freq_res_khz = 0;
-      ctx->obs_int_time_msec = 0;
-      ctx->obs_subobs_sec = 0;
-      ctx->transfer_size_bytes = 0;
-      ctx->obs_marker_number = 0;
-      ctx->obs_offset_sec = 0;
-      ctx->nbit = 0;
-      
-      if (ascii_header_get(client->header, "UTC_START", "%s", &ctx->utc_start) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): UTC_START not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_DURATION", "%i", &ctx->obs_duration_sec) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_DURATION not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_CHANNEL", "%i", &ctx->obs_channel_number) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_CHANNEL not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_PROJ_ID", "%s", &ctx->obs_proj_id) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_PROJ_ID not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_BANDWIDTH", "%i", &ctx->obs_bandwidth_khz) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_BANDWIDTH not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_TILES", "%i", &ctx->obs_tiles) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_TILES not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_POLS", "%i", &ctx->obs_pols) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_POLS not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_FREQ_RES", "%i", &ctx->obs_freq_res_khz) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_FREQ_RES not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_INT_TIME", "%i", &ctx->obs_int_time_msec) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_INT_TIME not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "OBS_SECS_PER_SUBOBS", "%i", &ctx->obs_subobs_sec) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_SECS_PER_SUBOBS not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "TRANSFER_SIZE", "%lu", &ctx->transfer_size_bytes) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): TRANSFER_SIZE not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "NBIT", "%i", &ctx->nbit) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): NBIT not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "UNIX_TIME", "%lu", &ctx->unix_time) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): UNIX_TIME not found in header.\n");
-        return -1;
-      }
-
-      if (ascii_header_get(client->header, "UNIX_TIME_MSEC", "%i", &ctx->unix_time_msec) == -1)
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): UNIX_TIME_MSEC not found in header.\n");
-        return -1;
-      }
-
-      // Output what we found in the header
-      multilog(log, LOG_INFO, "OBS_ID:               %lu\n", ctx->obs_id);
-      multilog(log, LOG_INFO, "UTC_START:            %s\n", ctx->utc_start);
-      multilog(log, LOG_INFO, "OBS_DURATION:         %d sec\n", ctx->obs_duration_sec);
-      multilog(log, LOG_INFO, "OBS_CHANNEL:          %d\n", ctx->obs_channel_number);
-      multilog(log, LOG_INFO, "OBS_PROJ_ID:          %s\n", ctx->obs_proj_id);
-      multilog(log, LOG_INFO, "OBS_TILES:            %d\n", ctx->obs_tiles);
-      multilog(log, LOG_INFO, "OBS_BANDWIDTH:        %d kHz\n", ctx->obs_bandwidth_khz);
-      multilog(log, LOG_INFO, "OBS_POLS:             %d\n", ctx->obs_pols);
-      multilog(log, LOG_INFO, "OBS_FREQ_RES:         %d kHz\n", ctx->obs_freq_res_khz);
-      multilog(log, LOG_INFO, "OBS_INT_TIME:         %d msec\n", ctx->obs_int_time_msec);        
-      multilog(log, LOG_INFO, "TRANSFER_SIZE:        %lu bytes\n", ctx->transfer_size_bytes);
-      multilog(log, LOG_INFO, "NBIT:                 %d\n", ctx->nbit);
-      multilog(log, LOG_INFO, "UNIX_TIME:            %lu\n", ctx->unix_time);
-      multilog(log, LOG_INFO, "UNIX_TIME_MSEC:       %d msec\n", ctx->unix_time_msec);
-      
+      ctx->subobs_id = this_subobs_id;
+                  
       /* Sanity check what we got */
-      if (!(ctx->obs_duration_sec >= 8 && (ctx->obs_duration_sec % 8 == 0)))
+      if (!(ctx->exposure_sec >= 8 && (ctx->exposure_sec % 8 == 0)))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_DURATION is not greater than or equal to 8 or a multiple of 8 seconds.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 seconds.\n", HEADER_EXPOSURE_SEC);
         return -1;
       }
 
-      if (!(ctx->obs_tiles > 0 && (ctx->obs_tiles % 16 == 0)))
+      if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % 16 == 0)))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_TILES is not greater than 0 or a multiple of 16 (as required by xGPU).\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0 or a multiple of 16 (as required by xGPU).\n", HEADER_NINPUTS_XGPU);
         return -1;
       }
 
-      if (!(ctx->obs_channel_number > 0 && ctx->obs_channel_number <=24))
+      if (!(ctx->coarse_channel > 0 && ctx->coarse_channel <=24))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_CHANNEL is not between 1 and 24.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 and 24.\n", HEADER_COARSE_CHANNEL);
         return -1;
       }
 
-      if (!(strlen(ctx->obs_proj_id) == 5))
+      if (!(strlen(ctx->proj_id) == 5))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_PROJ_ID must be 5 characters long.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s must be 5 characters long.\n", HEADER_PROJ_ID);
         return -1;
       }
 
-      if (!(ctx->obs_bandwidth_khz > 0))
+      if (!(ctx->bandwidth_hz > 0))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_BANDWIDTH is not greater than 0.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_BANDWIDTH_HZ);
         return -1;
       }
 
-      if (!(ctx->obs_pols > 0))
+      if (!(ctx->npol > 0))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_POLS is not greater than 0.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_NPOL);
         return -1;
       }
 
-      if (!(ctx->obs_freq_res_khz >= 1 && ctx->obs_freq_res_khz <= 1280))
+      if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= 1280000))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_FREQ_RES is not between 1 kHz and 1280 kHz.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and 1280000 kHz.\n", HEADER_FINE_CHAN_WIDTH_HZ);
         return -1;
       }
 
-      if (!(ctx->obs_int_time_msec >= 200 && ctx->obs_int_time_msec <= 8000))
+      if (!(ctx->int_time_msec >= 200 && ctx->int_time_msec <= 8000))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): OBS_INT_TIME is not between than 0.2 and 8 seconds.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between than 0.2 and 8 seconds.\n", HEADER_INT_TIME_MSEC);
         return -1;
       }
 
-      if (!(ctx->transfer_size_bytes > 0))
+      if (!(ctx->transfer_size > 0))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): TRANSFER_SIZE is not greater than 0.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_TRANSFER_SIZE);
         return -1;
       }
 
       if (!(ctx->nbit >= 8 && (ctx->nbit % 8 == 0)))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): NBIT is not greater than or equal to 8 or a multiple of 8 bits.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 bits.\n", HEADER_NBIT);
         return -1;
       } 
 
       if (!(ctx->unix_time_msec >= 0 || ctx->unix_time_msec<1000))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): UNIX_TIME_MSEC must be between 0 and 999 milliseconds.\n");
+        multilog(log, LOG_ERR, "dada_db_open(): %s must be between 0 and 999 milliseconds.\n", HEADER_UNIXTIME_MSEC);
         return -1;
       } 
 
       // Calculate baselines
-      ctx->obs_baselines = ((ctx->obs_tiles*(ctx->obs_tiles+1))/2);
-      ctx->obs_fine_channels = ctx->obs_bandwidth_khz / ctx->obs_freq_res_khz;
-
+      ctx->nbaselines = (ctx->ninputs_xgpu*(ctx->ninputs_xgpu+2))/8;
+      
       // Check transfer size read in from header matches what we expect from the other params
       // +1 is for the weights!
       int bytes_per_complex = (ctx->nbit / 8) * 2; // Should be 4 bytes per float (32 bits) x2 for r,i
-      uint64_t expected_bytes = ((ctx->obs_pols*ctx->obs_pols)*bytes_per_complex)*ctx->obs_baselines*(ctx->obs_fine_channels+1);
+      uint64_t expected_bytes = ((ctx->npol*ctx->npol)*bytes_per_complex)*ctx->nbaselines*(ctx->nfine_chan+1);
       
       if (expected_bytes != ctx->block_size)
       {
@@ -299,7 +203,7 @@ int dada_dbfits_open(dada_client_t* client)
     sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);    
       
     /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_gpuboxGG_FF.fits */
-    sprintf(ctx->fits_filename, "%s/%ld_%04d%02d%02d%02d%02d%02d_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->obs_channel_number, ctx->fits_file_number);
+    sprintf(ctx->fits_filename, "%s/%ld_%04d%02d%02d%02d%02d%02d_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
     
     if (create_fits(&ctx->fits_ptr, ctx->fits_filename)) 
     {
@@ -314,45 +218,45 @@ int dada_dbfits_open(dada_client_t* client)
 
     /* Update the duration */   
     int new_duration_sec = 0;
-    if (ascii_header_get(client->header, "OBS_DURATION", "%i", &new_duration_sec) == -1)
+    if (ascii_header_get(client->header, HEADER_EXPOSURE_SEC, "%i", &new_duration_sec) == -1)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): OBS_DURATION not found in header.\n");
+      multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SEC);
       return -1;
     }
 
     /* has the duration changed? */
-    if (new_duration_sec != ctx->obs_duration_sec)
+    if (new_duration_sec != ctx->exposure_sec)
     {
-      multilog(log, LOG_INFO, "dada_db_open(): OBS_DURATION has changed from %d sec to %d sec.\n", ctx->obs_duration_sec, new_duration_sec);
+      multilog(log, LOG_INFO, "dada_db_open(): %s has changed from %d sec to %d sec.\n", HEADER_EXPOSURE_SEC, ctx->exposure_sec, new_duration_sec);
     }
     
     /* Update the offset */
     int new_obs_offset_sec = 0;
-    if (ascii_header_get(client->header, "OBS_OFFSET", "%i", &new_obs_offset_sec) == -1)
+    if (ascii_header_get(client->header, HEADER_OBS_OFFSET, "%i", &new_obs_offset_sec) == -1)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): OBS_OFFSET not found in header.\n");
+      multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_OBS_OFFSET);
       return -1;
     }
 
     /* has the offset incremented? */
-    if (new_obs_offset_sec == ctx->obs_offset_sec)
+    if (new_obs_offset_sec == ctx->obs_offset)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): OBS_OFFSET is the same as the previous subobservation (%d == %d).\n", ctx->obs_offset_sec, new_obs_offset_sec);
+      multilog(log, LOG_ERR, "dada_db_open(): %s is the same as the previous subobservation (%d == %d).\n", HEADER_OBS_OFFSET, ctx->obs_offset, new_obs_offset_sec);
       return -1;
     }
-    else if (new_obs_offset_sec < ctx->obs_offset_sec)
+    else if (new_obs_offset_sec < ctx->obs_offset)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): OBS_OFFSET is less than the previous observation (%d < %d).\n", ctx->obs_offset_sec, new_obs_offset_sec);
+      multilog(log, LOG_ERR, "dada_db_open(): %s is less than the previous observation (%d < %d).\n", HEADER_OBS_OFFSET, ctx->obs_offset, new_obs_offset_sec);
       return -1;
     }
-    else if (new_obs_offset_sec - ctx->obs_offset_sec != ctx->obs_subobs_sec)
+    else if (new_obs_offset_sec - ctx->obs_offset != ctx->secs_per_subobs)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): OBS_OFFSET did not increase by %d seconds (it was: %d).\n", ctx->obs_subobs_sec, new_obs_offset_sec - ctx->obs_offset_sec);
+      multilog(log, LOG_ERR, "dada_db_open(): %s did not increase by %d seconds (it was: %d).\n", HEADER_OBS_OFFSET, ctx->secs_per_subobs, new_obs_offset_sec - ctx->obs_offset);
       return -1;
     }
     else
     {
-      multilog(log, LOG_INFO, "dada_db_open(): OBS_OFFSET incremented from %d sec to %d sec.\n", ctx->obs_duration_sec, new_duration_sec);
+      multilog(log, LOG_INFO, "dada_db_open(): %s incremented from %d sec to %d sec.\n", HEADER_OBS_OFFSET, ctx->exposure_sec, new_duration_sec);
     }
   }
     
@@ -379,27 +283,27 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   
   // Some sanity checks:
   // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
-  int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->obs_int_time_msec / 1000.0));
-  if (current_duration % ctx->obs_subobs_sec != 0)
+  int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->int_time_msec / 1000.0));
+  if (current_duration % ctx->secs_per_subobs != 0)
   {
-    multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed before we got all %d seconds of data!\n", ctx->obs_subobs_sec);
+    multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed before we got all %d seconds of data!\n", ctx->secs_per_subobs);
     return -1;
   }
 
   //
   // TODO: Check with the metabin for info about this observation. Has the duration changed?
   //    
-  int new_duration = ctx->obs_duration_sec; //TODO: Fix me! This is a placeholder
+  int new_duration = ctx->exposure_sec; //TODO: Fix me! This is a placeholder
 
-  if (ctx->obs_duration_sec != new_duration)
+  if (ctx->exposure_sec != new_duration)
   {
-    multilog(log, LOG_INFO,"dada_dbfits_close(): Observation has been cut short. Old duration was %d, new duration is %d.\n", ctx->obs_duration_sec, new_duration);
-    ctx->obs_duration_sec = new_duration; // TODO: put new duration from metabin here
+    multilog(log, LOG_INFO,"dada_dbfits_close(): Observation has been cut short. Old duration was %d, new duration is %d.\n", ctx->exposure_sec, new_duration);
+    ctx->exposure_sec = new_duration; // TODO: put new duration from metabin here
   }
 
-  multilog(log, LOG_INFO, "dada_dbfits_close(): Checking duration based on current marker %d vs obs duration %d.\n", current_duration, ctx->obs_duration_sec);
+  multilog(log, LOG_INFO, "dada_dbfits_close(): Checking duration based on current marker %d vs obs duration %d.\n", current_duration, ctx->exposure_sec);
 
-  if (current_duration == ctx->obs_duration_sec)
+  if (current_duration == ctx->exposure_sec)
   {
     // Observation ends NOW! It got cut short, or we naturally are at the end of the observation 
     // Close existing fits file (if we have one)    
@@ -446,8 +350,8 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     // Write HDU here! 
     // TODO: Unless we are last block in which case write weights!    
     if (create_fits_imghdu(ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
-                           ctx->obs_baselines, ctx->obs_fine_channels, ctx->obs_pols*ctx->obs_pols,
-                           ctx->obs_int_time_msec, (char*)buffer, bytes))    
+                           ctx->nbaselines, ctx->nfine_chan, ctx->npol*ctx->npol,
+                           ctx->int_time_msec, (char*)buffer, bytes))    
     {
       // Error!
       multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
@@ -486,4 +390,169 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
   multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
 
   return dada_dbfits_io(client, buffer, bytes);
+}
+
+int read_dada_header(dada_client_t *client)
+{
+  // Reset and read everything except for obs_id and subobs_id
+  assert(client != 0);
+  dada_db_s* ctx = (dada_db_s*) client->context;
+
+  assert(ctx->log != 0);
+  multilog_t * log = (multilog_t *) ctx->log;
+
+  ctx->populated = 0;  
+  strncpy(ctx->command, "", MWAX_COMMAND_LEN);
+  strncpy(ctx->utc_start, "", UTC_START_LEN);
+  ctx->obs_offset = 0;
+  ctx->nbit = 0;
+  ctx->npol = 0;
+  ctx->ninputs_xgpu = 0;
+  ctx->int_time_msec = 0;
+  ctx->transfer_size = 0;
+  strncpy(ctx->proj_id, "", PROJ_ID_LEN);            
+  ctx->exposure_sec = 0;      
+  ctx->coarse_channel = 0;
+  ctx->secs_per_subobs = 0;
+  ctx->unix_time = 0;
+  ctx->unix_time_msec = 0;
+  ctx->fine_chan_width_hz = 0;
+  ctx->nfine_chan = 0;
+  ctx->bandwidth_hz = 0;
+
+  ctx->nbaselines = 0;                           
+  ctx->obs_marker_number = 0;
+  
+  if (ascii_header_get(client->header, HEADER_POPULATED, "%i", &ctx->populated) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_POPULATED);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_COMMAND, "%s", &ctx->command) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_COMMAND);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_UTC_START, "%s", &ctx->utc_start) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_UTC_START);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_OBS_OFFSET, "%i", &ctx->obs_offset) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_OBS_OFFSET);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_NBIT, "%i", &ctx->nbit) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_NBIT);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_NPOL, "%i", &ctx->npol) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_NPOL);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_NINPUTS_XGPU, "%i", &ctx->ninputs_xgpu) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_NINPUTS_XGPU);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_INT_TIME_MSEC, "%i", &ctx->int_time_msec) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_INT_TIME_MSEC);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_TRANSFER_SIZE, "%lu", &ctx->transfer_size) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_TRANSFER_SIZE);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_PROJ_ID, "%s", &ctx->proj_id) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_PROJ_ID);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_EXPOSURE_SEC, "%i", &ctx->exposure_sec) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SEC);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_COARSE_CHANNEL, "%i", &ctx->coarse_channel) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_COARSE_CHANNEL);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_SECS_PER_SUBOBS, "%i", &ctx->secs_per_subobs) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_SECS_PER_SUBOBS);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_UNIXTIME, "%lu", &ctx->unix_time) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_UNIXTIME);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_UNIXTIME_MSEC, "%i", &ctx->unix_time_msec) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_UNIXTIME_MSEC);
+    return -1;
+  }
+    
+  if (ascii_header_get(client->header, HEADER_FINE_CHAN_WIDTH_HZ, "%i", &ctx->fine_chan_width_hz) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_FINE_CHAN_WIDTH_HZ);
+    return -1;
+  }
+
+  if (ascii_header_get(client->header, HEADER_NFINE_CHAN, "%i", &ctx->nfine_chan) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_NFINE_CHAN);
+    return -1;
+  }  
+
+  if (ascii_header_get(client->header, HEADER_BANDWIDTH_HZ, "%i", &ctx->bandwidth_hz) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    return -1;
+  }  
+  
+
+  // Output what we found in the header
+  multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated==1?"yes":"no"));
+  multilog(log, LOG_INFO, "Obs Id:                   %lu\n", ctx->obs_id);
+  multilog(log, LOG_INFO, "Subobs Id:                %lu\n", ctx->subobs_id);
+  multilog(log, LOG_INFO, "Command:                  %s\n", ctx->command);
+  multilog(log, LOG_INFO, "Start time (UTC):         %s\n", ctx->utc_start);
+  multilog(log, LOG_INFO, "Offset:                   %d sec\n", ctx->obs_offset);
+  multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);
+  multilog(log, LOG_INFO, "Polarisations:            %d\n", ctx->npol);
+  multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs_xgpu / 2);
+  multilog(log, LOG_INFO, "Correlator int time:      %d msec\n", ctx->int_time_msec / 1000);        
+  multilog(log, LOG_INFO, "Size of observation:      %lu bytes\n", ctx->transfer_size);
+  multilog(log, LOG_INFO, "Project Id:               %s\n", ctx->proj_id);  
+  multilog(log, LOG_INFO, "Duration:                 %d sec\n", ctx->exposure_sec);
+  multilog(log, LOG_INFO, "Coarse channel no.:       %d\n", ctx->coarse_channel);
+  multilog(log, LOG_INFO, "Duration of subobs:       %d sec\n", ctx->secs_per_subobs);
+  multilog(log, LOG_INFO, "UNIX time of subobs:      %lu\n", ctx->unix_time);
+  multilog(log, LOG_INFO, "UNIX milliseconds:        %d msec\n", ctx->unix_time_msec);
+  multilog(log, LOG_INFO, "Correlator freq res:      %d kHz\n", ctx->fine_chan_width_hz / 1000);
+  multilog(log, LOG_INFO, "No fine chans per coarse: %d\n", ctx->nfine_chan);
+  multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);
+
+  return EXIT_SUCCESS;
 }
