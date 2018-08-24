@@ -22,4 +22,4 @@ int open_fits(fitsfile **fptr, const char* filename);
 int create_fits(fitsfile **fptr, const char* filename);
 int close_fits(fitsfile **fptr);
 int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, int baselines, int fine_channels, 
-                       int polarisations, float int_time, char *buffer, uint64_t bytes);
+                       int polarisations, float int_time, float *buffer, uint64_t bytes);

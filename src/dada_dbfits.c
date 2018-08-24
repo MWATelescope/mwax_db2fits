@@ -5,8 +5,9 @@
  * @brief This is the code that drives the ring buffers
  *
  */
-#include "utils.h"
 #include "dada_dbfits.h"
+#include "mwax_global_defs.h" // From mwax-common
+#include "utils.h"
 
 /**
  * 
@@ -84,8 +85,9 @@ int dada_dbfits_open(dada_client_t* client)
       // fits info  
       strncpy(ctx->fits_filename, "", PATH_MAX);      
 
-      ctx->obs_id = 0;
-      ctx->subobs_id = 0;
+      // Set the obsid & sub obsid 
+      ctx->obs_id = this_obs_id;
+      ctx->subobs_id = this_subobs_id;
 
       // Read in all of the info from the header into our struct
       if (read_dada_header(client))
@@ -93,11 +95,7 @@ int dada_dbfits_open(dada_client_t* client)
         // Error processing in header!
         multilog(log, LOG_ERR,"dada_db_open(): Error processing header.\n");
         return -1;
-      }
-
-      /* Set the obsid & sub obsid */
-      ctx->obs_id = this_obs_id;
-      ctx->subobs_id = this_subobs_id;
+      }      
                   
       /* Sanity check what we got */
       if (!(ctx->exposure_sec >= 8 && (ctx->exposure_sec % 8 == 0)))
@@ -136,17 +134,24 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
-      if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= 1280000))
+      if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= ctx->bandwidth_hz))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and 1280000 kHz.\n", HEADER_FINE_CHAN_WIDTH_HZ);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and %ul kHz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
         return -1;
       }
 
-      if (!(ctx->int_time_msec >= 200 && ctx->int_time_msec <= 8000))
+      if (!(ctx->secs_per_subobs > 0))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between than 0.2 and 8 seconds.\n", HEADER_INT_TIME_MSEC);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_SECS_PER_SUBOBS);
         return -1;
       }
+
+      int msec_per_subobs = ctx->secs_per_subobs * 1000;
+      if (!(ctx->int_time_msec >= 200 && ctx->int_time_msec <= msec_per_subobs))
+      {
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between than 0.2 and %d seconds.\n", HEADER_INT_TIME_MSEC, msec_per_subobs);
+        return -1;
+      }    
 
       if (!(ctx->transfer_size > 0))
       {
@@ -169,21 +174,32 @@ int dada_dbfits_open(dada_client_t* client)
       // Calculate baselines
       ctx->nbaselines = (ctx->ninputs_xgpu*(ctx->ninputs_xgpu+2))/8;
       
-      // Check transfer size read in from header matches what we expect from the other params
-      // +1 is for the weights!
+      // Check transfer size read in from header matches what we expect from the other params      
       int bytes_per_complex = (ctx->nbit / 8) * 2; // Should be 4 bytes per float (32 bits) x2 for r,i
-      uint64_t expected_bytes = ((ctx->npol*ctx->npol)*bytes_per_complex)*ctx->nbaselines*(ctx->nfine_chan+1);
-      
-      if (expected_bytes != ctx->block_size)
+      ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
+      ctx->expected_transfer_size_of_one_fine_channel = ((ctx->npol * ctx->npol) * bytes_per_complex) * ctx->nbaselines;
+      ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
+      ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_one_fine_channel;
+      ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
+      ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs + (ctx->expected_transfer_size_of_one_fine_channel * ctx->no_of_integrations_per_subobs);
+
+      if (ctx->expected_transfer_size_of_subobs_plus_weights > ctx->transfer_size)
       {
-        multilog(log, LOG_ERR, "dada_db_open(): Ring buffer block size (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", ctx->block_size, expected_bytes);
+        multilog(log, LOG_ERR, "dada_db_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs);
+        return -1; 
+      }
+
+      // Also confirm that the integration size can fit into the ringbuffer size
+      if (ctx->expected_transfer_size_of_integration_plus_weights > ctx->block_size)
+      {
+        multilog(log, LOG_ERR, "dada_db_open(): Ring buffer block size (%lu bytes) is less than the calculated size of an integration from header parameters (%lu bytes).\n", ctx->block_size, ctx->expected_transfer_size_of_integration_plus_weights);
         return -1;
       }
       
       // Reset the filenumber
       ctx->fits_file_number = 0;
 
-      // These need to be set for psrdadd
+      // These need to be set for psrdada
       client->transfer_bytes = 0;  
       client->optimal_bytes = 0;
 
@@ -267,6 +283,85 @@ int dada_dbfits_open(dada_client_t* client)
 
 /**
  * 
+ *  @brief This is the function psrdada calls when we have new data to read.
+ *         NOTE: this method reads an entire block of PSRDADA ringbuffer. The ringbuffer is sized to be the MAX
+ *         possible, as it cannot be resized at runtime. Therefore most times, the correlator mode will be producing
+ *         less data than this buffer can contain, so we'll need to only get the first x bytes from the buffer.
+ *         (Where x is the bytes needded for that correlator mode + 1 extra finechannel for weights)
+ * 
+ *  @param[in] client A pointer to the dada_client_t object.
+ *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
+ *  @param[in] bytes The number of bytes that are available to be read from the ringbuffer.
+ *  @returns the number of bytes read or -1 if there was an error.
+ */
+int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
+{
+  assert (client != 0);
+  dada_db_s* ctx = (dada_db_s*) client->context;
+
+  multilog_t * log = (multilog_t *) ctx->log;
+  
+  uint64_t written  = 0;
+  uint64_t to_write = bytes;
+  uint64_t wrote    = 0;
+
+  multilog (log, LOG_DEBUG, "dada_dbfits_io(): Processing block %d.\n", ctx->block_number);
+     
+  multilog(log, LOG_INFO, "dada_dbfits_io(): Writing %d of %d bytes into new image HDU; Marker = %d.\n", ctx->expected_transfer_size_of_integration, bytes, ctx->obs_marker_number); 
+      
+  // Write HDU here!
+  assert(sizeof(float) == sizeof(void *));
+  float* data = (float*)buffer;
+  
+  // Remove the weights from the byte count
+  // Remove any left over space from the byte count too
+  uint64_t hdu_bytes = ctx->expected_transfer_size_of_integration;
+
+  // Create the HDU in the FITS file
+  if (create_fits_imghdu(ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
+                          ctx->nbaselines, ctx->nfine_chan, ctx->npol,
+                          ctx->int_time_msec, data, hdu_bytes))    
+  {
+    // Error!
+    multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
+    return -1;
+  }
+  else
+  {      
+    wrote = to_write;
+    written += wrote;
+    ctx->obs_marker_number += 1;
+  }  
+
+  ctx->block_number += 1;
+  ctx->bytes_written += written;
+
+  return bytes;
+}
+
+/**
+ * 
+ *  @brief This is called when we are reading a sub block of an 8 second sub-observation.
+ *  @param[in] client A pointer to the dada_client_t object.
+ *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
+ *  @param[in] bytes The number of bytes that are available to be read from the ringbuffer
+ *  @param[in] block_id The block number (id) of the block we are reading.
+ *  @returns the number of bytes read, or -1 if there was an error.
+ */
+int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes, uint64_t block_id)
+{
+  assert (client != 0);
+  dada_db_s* ctx = (dada_db_s*) client->context;
+
+  multilog_t * log = (multilog_t *) ctx->log;
+
+  multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
+
+  return dada_dbfits_io(client, buffer, bytes);
+}
+
+/**
+ * 
  *  @brief This is called at the end of each new 8 second sub-observation.
  *         We need check if the current observation duration has changed (shortened) from what we expected.
  *  @param[in] client A pointer to the dada_client_t object.
@@ -279,14 +374,15 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   dada_db_s* ctx = (dada_db_s*) client->context;
 
   multilog_t *log = (multilog_t *) client->log;
-  multilog(log, LOG_INFO, "dada_dbfits_close(bytes_written=%ul): Started.\n", bytes_written);
+  multilog(log, LOG_INFO, "dada_dbfits_close(bytes_written=%lu): Started.\n", bytes_written);
   
   // Some sanity checks:
   // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
   int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->int_time_msec / 1000.0));
+
   if (current_duration % ctx->secs_per_subobs != 0)
   {
-    multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed before we got all %d seconds of data!\n", ctx->secs_per_subobs);
+    multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed at %d secs before we got all %d secs of data!\n", current_duration, ctx->secs_per_subobs);
     return -1;
   }
 
@@ -324,74 +420,10 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
 
 /**
  * 
- *  @brief This is the function psrdada calls when we have new data to read.
- *  @param[in] client A pointer to the dada_client_t object.
- *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
- *  @param[in] bytes The number of bytes that are available to be read from the ringbuffer.
- *  @returns the number of bytes read or -1 if there was an error.
+ *  @brief This reads a PSRDADA header and populates our context structure and dumps the contents into a debug log
+ *  @param[in] client A pointer to the dada_client_t object. 
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
-int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
-{
-  assert (client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
-
-  multilog_t * log = (multilog_t *) ctx->log;
-  
-  uint64_t written  = 0;
-  uint64_t to_write = bytes;
-  uint64_t wrote    = 0;
-
-  multilog (log, LOG_DEBUG, "dada_dbfits_io(): Processing block %d.\n", ctx->block_number);
-   
-  while (written < bytes)
-  {    
-    multilog(log, LOG_INFO, "dada_dbfits_io(): Writing %d into new image HDU; Marker = %d.\n", bytes, ctx->obs_marker_number); 
-        
-    // Write HDU here! 
-    // TODO: Unless we are last block in which case write weights!    
-    if (create_fits_imghdu(ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
-                           ctx->nbaselines, ctx->nfine_chan, ctx->npol*ctx->npol,
-                           ctx->int_time_msec, (char*)buffer, bytes))    
-    {
-      // Error!
-      multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
-      return -1;
-    }
-    else
-    {      
-      wrote = to_write;
-      written += wrote;
-      ctx->obs_marker_number += 1;
-    }
-  }
-
-  ctx->block_number += 1;
-  ctx->bytes_written += written;
-
-  return written;
-}
-
-/**
- * 
- *  @brief This is called when we are reading a sub block of an 8 second sub-observation.
- *  @param[in] client A pointer to the dada_client_t object.
- *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
- *  @param[in] bytes The number of bytes that are available to be read from the ringbuffer
- *  @param[in] block_id The block number (id) of the block we are reading.
- *  @returns the number of bytes read, or -1 if there was an error.
- */
-int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes, uint64_t block_id)
-{
-  assert (client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
-
-  multilog_t * log = (multilog_t *) ctx->log;
-
-  multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
-
-  return dada_dbfits_io(client, buffer, bytes);
-}
-
 int read_dada_header(dada_client_t *client)
 {
   // Reset and read everything except for obs_id and subobs_id
@@ -536,23 +568,23 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated==1?"yes":"no"));
   multilog(log, LOG_INFO, "Obs Id:                   %lu\n", ctx->obs_id);
   multilog(log, LOG_INFO, "Subobs Id:                %lu\n", ctx->subobs_id);
-  multilog(log, LOG_INFO, "Command:                  %s\n", ctx->command);
-  multilog(log, LOG_INFO, "Start time (UTC):         %s\n", ctx->utc_start);
   multilog(log, LOG_INFO, "Offset:                   %d sec\n", ctx->obs_offset);
+  multilog(log, LOG_INFO, "Command:                  %s\n", ctx->command);  
+  multilog(log, LOG_INFO, "Start time (UTC):         %s\n", ctx->utc_start);
+  multilog(log, LOG_INFO, "Correlator freq res:      %d kHz\n", ctx->fine_chan_width_hz / 1000);
+  multilog(log, LOG_INFO, "Correlator int time:      %0.2f msec\n", (float)ctx->int_time_msec / 1000);        
+  multilog(log, LOG_INFO, "No fine chans per coarse: %d\n", ctx->nfine_chan);
+  multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);  
   multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);
   multilog(log, LOG_INFO, "Polarisations:            %d\n", ctx->npol);
-  multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs_xgpu / 2);
-  multilog(log, LOG_INFO, "Correlator int time:      %d msec\n", ctx->int_time_msec / 1000);        
-  multilog(log, LOG_INFO, "Size of observation:      %lu bytes\n", ctx->transfer_size);
+  multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs_xgpu / 2);  
   multilog(log, LOG_INFO, "Project Id:               %s\n", ctx->proj_id);  
   multilog(log, LOG_INFO, "Duration:                 %d sec\n", ctx->exposure_sec);
   multilog(log, LOG_INFO, "Coarse channel no.:       %d\n", ctx->coarse_channel);
   multilog(log, LOG_INFO, "Duration of subobs:       %d sec\n", ctx->secs_per_subobs);
   multilog(log, LOG_INFO, "UNIX time of subobs:      %lu\n", ctx->unix_time);
-  multilog(log, LOG_INFO, "UNIX milliseconds:        %d msec\n", ctx->unix_time_msec);
-  multilog(log, LOG_INFO, "Correlator freq res:      %d kHz\n", ctx->fine_chan_width_hz / 1000);
-  multilog(log, LOG_INFO, "No fine chans per coarse: %d\n", ctx->nfine_chan);
-  multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);
+  multilog(log, LOG_INFO, "UNIX milliseconds:        %d msec\n", ctx->unix_time_msec);  
+  multilog(log, LOG_INFO, "Size of subobservation:   %lu bytes\n", ctx->transfer_size);
 
   return EXIT_SUCCESS;
 }

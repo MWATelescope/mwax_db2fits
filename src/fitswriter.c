@@ -193,15 +193,69 @@ int open_fits(fitsfile **fptr, const char *filename)
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
  */
 int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, int baselines, int fine_channels, 
-                       int polarisations, float int_time_msec, char *buffer, uint64_t bytes)
+                       int polarisations, float int_time_msec, float *buffer, uint64_t bytes)
 {
-  // Each imagehdu will be [baseline][freq][pols][real][imaginary]   
+  //
+  // Each imagehdu will be [baseline][freq][pols][real][imaginary] for an integration
+  // So, if we think of the HDU as a 2d matrix, it would be:
+  //
+  // NAXIS1 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
+  // NAXIS2 = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
+  //
+  // [time][baseline][pol][freq]
+  //
+  //           Freq/Pol  
+  // Baseline  xx_Ch01 xx_Ch02 xx_ChNN yy_Ch01 yy_Ch02 yy_ChNN xy_Ch01 Ch02_yx...
+  //    1-1    r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i    ...
+  //    1-2    r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i
+  //    1-3
+  //    ...
+  //
+  //
+  //  Flattened it looks like this:
+  //  =============================
+  //  [1-1|xx|Ch01|r],[1-1|xx|Ch01|i],[1-1|xx|Ch02|r],[1-1|xx|Ch02|i],...[1-1|xx|ChNN|r],[1-1|xx|ChNN|i]...
+  //  [1-1|yy|Ch01|r],[1-1|yy|Ch01|i],[1-1|yy|Ch02|r],[1-1|yy|Ch02|i],...[1-1|yy|ChNN|r],[1-1|yy|ChNN|i]...
+  //  [1-1|xy|Ch01|r],[1-1|xy|Ch01|i],[1-1|xy|Ch02|r],[1-1|xy|Ch02|i],...[1-1|xy|ChNN|r],[1-1|xy|ChNN|i]...
+  //  [1-1|yx|Ch01|r],[1-1|yx|Ch01|i],[1-1|yx|Ch02|r],[1-1|yx|Ch02|i],...[1-1|yx|ChNN|r],[1-1|yx|ChNN|i]
+  //
+  //  [1-2|xx|Ch01|r],[1-2|xx|Ch01|i],[1-2|xx|Ch02|r],[1-2|xx|Ch02|i],...[1-2|xx|ChNN|r],[1-2|xx|ChNN|i]...
+  //  [1-2|yy|Ch01|r],[1-2|yy|Ch01|i],[1-2|yy|Ch02|r],[1-2|yy|Ch02|i],...[1-2|yy|ChNN|r],[1-2|yy|ChNN|i]...
+  //  [1-2|xy|Ch01|r],[1-2|xy|Ch01|i],[1-2|xy|Ch02|r],[1-2|xy|Ch02|i],...[1-2|xy|ChNN|r],[1-2|xy|ChNN|i]...
+  //  [1-2|yx|Ch01|r],[1-2|yx|Ch01|i],[1-2|yx|Ch02|r],[1-2|yx|Ch02|i],...[1-2|yx|ChNN|r],[1-2|yx|ChNN|i]...
+  //  
+  //
+  //  TileA TileB  Pol  Freq  data
+  //  1     1       xx  ch01  r,i
+  //  1     1       xx  ch02  r,i
+  //  1     1       xx  ...
+  //  1     1       xx  chNN  r,i
+  //  1     1       yy  ch01  r,i
+  //  1     1       yy  ch02  r,i
+  //  1     1       yy  ...
+  //  1     1       yy  chNN  r,i
+  //  1     1       xy  ch01  r,i
+  //  1     1       xy  ch02  r,i
+  //  1     1       xy  ...
+  //  1     1       xy  chNN  r,i
+  //  1     1       yx  ch01  r,i
+  //  1     1       yx  ch02  r,i
+  //  1     1       yx  ...
+  //  1     1       yx  chNN  r,i
+  //  1     2
+  //  1    ...
+  //  1    128
+  //  2     2
+  //  2    ...
+  //  2    128
+  //  ...
+  //
   int status = 0;
   int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes  == 8 bytes
   long naxis = 2; 
   uint64_t axis1 = baselines;
-  uint64_t axis2 = (fine_channels+1) * polarisations * 2;   // we add 1 because of weights, we x2 as we store real and imaginary
-  long naxes[2] = { axis1, axis2 };  // 10440 x 2056 elements
+  uint64_t axis2 = fine_channels * polarisations * polarisations * 2;   //  we x2 as we store real and imaginary
+  long naxes[2] = { axis1, axis2 };  
 
   multilog(g_ctx.log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1, (long long)axis2);
 
