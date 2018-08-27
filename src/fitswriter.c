@@ -200,64 +200,63 @@ int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_ti
   // So, if we think of the HDU as a 2d matrix, it would be:
   //
   // NAXIS1 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
-  // NAXIS2 = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
+  // NAXIS2_rows = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
   //
-  // [time][baseline][pol][freq]
+  // [time][baseline][freq][pol]
   //
-  //           Freq/Pol  
-  // Baseline  xx_Ch01 xx_Ch02 xx_ChNN yy_Ch01 yy_Ch02 yy_ChNN xy_Ch01 Ch02_yx...
-  //    1-1    r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i    ...
-  //    1-2    r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i
-  //    1-3
-  //    ...
+  //               Col (Freq/Pol)
+  // (tile-tile)      0       1        2      3       4       5       6       7...               
+  // (Baseline) Row   Ch01_xx Ch01_xy Ch01_yx Ch01_yy Ch02_xx Ch02_xy Ch02_yx Ch02_yy ...  
+  //  1-1       0     r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i    ...
+  //  1-2       1     r,i     r,i     r,i     r,i     r,i     r,i     r,i     r,i
+  //  1-3       2     ...
+  //  ...       ...
+  //  1-128     127   ...
+  //  2-2       128   ...
   //
+  //  Where:
+  //  Tiles are in tile_id order (from M&C database)
+  //  Baselines are tile vs tile, not tile+pol vs tile+pol
+  //  Baselines are in regular triangular order. 1-1..1-128, then 2-2..2-128, then 3-3..3-128, etc.
+  //  Frequencies are in sky frequency ascending order
+  //  Polarisations are in xx,xy,yx,yy order
   //
   //  Flattened it looks like this:
   //  =============================
-  //  [1-1|xx|Ch01|r],[1-1|xx|Ch01|i],[1-1|xx|Ch02|r],[1-1|xx|Ch02|i],...[1-1|xx|ChNN|r],[1-1|xx|ChNN|i]...
-  //  [1-1|yy|Ch01|r],[1-1|yy|Ch01|i],[1-1|yy|Ch02|r],[1-1|yy|Ch02|i],...[1-1|yy|ChNN|r],[1-1|yy|ChNN|i]...
-  //  [1-1|xy|Ch01|r],[1-1|xy|Ch01|i],[1-1|xy|Ch02|r],[1-1|xy|Ch02|i],...[1-1|xy|ChNN|r],[1-1|xy|ChNN|i]...
-  //  [1-1|yx|Ch01|r],[1-1|yx|Ch01|i],[1-1|yx|Ch02|r],[1-1|yx|Ch02|i],...[1-1|yx|ChNN|r],[1-1|yx|ChNN|i]
-  //
-  //  [1-2|xx|Ch01|r],[1-2|xx|Ch01|i],[1-2|xx|Ch02|r],[1-2|xx|Ch02|i],...[1-2|xx|ChNN|r],[1-2|xx|ChNN|i]...
-  //  [1-2|yy|Ch01|r],[1-2|yy|Ch01|i],[1-2|yy|Ch02|r],[1-2|yy|Ch02|i],...[1-2|yy|ChNN|r],[1-2|yy|ChNN|i]...
-  //  [1-2|xy|Ch01|r],[1-2|xy|Ch01|i],[1-2|xy|Ch02|r],[1-2|xy|Ch02|i],...[1-2|xy|ChNN|r],[1-2|xy|ChNN|i]...
-  //  [1-2|yx|Ch01|r],[1-2|yx|Ch01|i],[1-2|yx|Ch02|r],[1-2|yx|Ch02|i],...[1-2|yx|ChNN|r],[1-2|yx|ChNN|i]...
+  //  [1-1|Ch01|xx|r],[i],[1-1|Ch01|xy|r],[i],[1-1|Ch01|yx|r],[i],[1-1|Ch01|yy|r],[i],...[1-1|ChNN|xx|r],[i],...
   //  
   //
-  //  TileA TileB  Pol  Freq  data
-  //  1     1       xx  ch01  r,i
-  //  1     1       xx  ch02  r,i
-  //  1     1       xx  ...
-  //  1     1       xx  chNN  r,i
-  //  1     1       yy  ch01  r,i
-  //  1     1       yy  ch02  r,i
-  //  1     1       yy  ...
-  //  1     1       yy  chNN  r,i
-  //  1     1       xy  ch01  r,i
-  //  1     1       xy  ch02  r,i
-  //  1     1       xy  ...
-  //  1     1       xy  chNN  r,i
-  //  1     1       yx  ch01  r,i
-  //  1     1       yx  ch02  r,i
-  //  1     1       yx  ...
-  //  1     1       yx  chNN  r,i
-  //  1     2
+  //  TileA TileB  Freq  Pol  data
+  //  1     1      Ch01  xx   r,i
+  //  1     1      Ch01  xy   r,i
+  //  1     1      Ch01  yx   r,i 
+  //  1     1      Ch01  yy   r,i
+  //  1     1      Ch02  xx   r,i
+  //  1     1      Ch02  xy   r,i
+  //  1     1      Ch02  yx   r,i 
+  //  1     1      Ch02  yy   r,i
+  //  1     1      ...
+  //  1     1      ChNN  xx   r,i
+  //  1     1      ChNN  xy   r,i
+  //  1     1      ChNN  yx   r,i 
+  //  1     1      ChNN  yy   r,i
+  //  1     2      Ch01  xx   r,i
   //  1    ...
-  //  1    128
-  //  2     2
+  //  1    128     ChNN  yy   r,i
+  //  2     2      Ch01  xx   r,i
   //  2    ...
-  //  2    128
+  //  2    128     ChNN  xx   r,i
   //  ...
+  //  128  128     ChNN  yy   r,i
   //
   int status = 0;
   int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes  == 8 bytes
   long naxis = 2; 
-  uint64_t axis1 = baselines;
-  uint64_t axis2 = fine_channels * polarisations * polarisations * 2;   //  we x2 as we store real and imaginary
-  long naxes[2] = { axis1, axis2 };  
+  uint64_t axis1_cols = baselines;
+  uint64_t axis2_rows = fine_channels * polarisations * polarisations * 2;   //  we x2 as we store real and imaginary
+  long naxes[2] = { axis1_cols, axis2_rows };  
 
-  multilog(g_ctx.log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1, (long long)axis2);
+  multilog(g_ctx.log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_cols, (long long)axis2_rows);
 
   // Create new IMGHDU    
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
@@ -316,7 +315,7 @@ int create_fits_imghdu(fitsfile *fptr, time_t unix_time, int unix_millisecond_ti
   long nelements = bytes / (abs(bitpix) / 8);
 
   // Check that number of elements * bytes per element matches what we expect  
-  u_int64_t expected_bytes = (axis1 * axis2 * (abs(bitpix) / 8));
+  u_int64_t expected_bytes = (axis1_cols * axis2_rows * (abs(bitpix) / 8));
   if (bytes != expected_bytes)
   {
     multilog(g_ctx.log, LOG_ERR, "HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
