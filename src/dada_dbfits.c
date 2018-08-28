@@ -21,8 +21,58 @@ int dada_dbfits_open(dada_client_t* client)
   assert(client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
+  assert(ctx->log != 0);
   multilog_t *log = (multilog_t *) client->log;  
   multilog(log, LOG_INFO, "dada_db_open(): extracting params from dada header\n");
+
+  // These need to be set for psrdada
+  client->transfer_bytes = 0;  
+  client->optimal_bytes = 0;
+
+  // we do not want to explicitly transfer the DADA header
+  client->header_transfer = 0;
+
+  // Read the command first
+  strncpy(ctx->command, "", MWAX_COMMAND_LEN);  
+  if (ascii_header_get(client->header, HEADER_COMMAND, "%s", &ctx->command) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_COMMAND);
+    return -1;
+  }
+
+  // Verify command is ok
+  if (strlen(ctx->command) > 0)
+  {
+    multilog(log, LOG_INFO, "dada_db_open(): %s == %s\n", HEADER_COMMAND, ctx->command);
+
+    if (strncmp(ctx->command, MWAX_COMMAND_CAPTURE, MWAX_COMMAND_LEN) == 0)
+    {
+      // Normal operations      
+    }  
+    else if (strncmp(ctx->command, MWAX_COMMAND_QUIT, MWAX_COMMAND_LEN) == 0)
+    {
+      // We'll flag we want to quit
+      set_quit(1);
+      return EXIT_SUCCESS;
+    }
+    else if(strncmp(ctx->command, MWAX_COMMAND_IDLE, MWAX_COMMAND_LEN) == 0)
+    {
+      // Idle- don't produce files 
+      return EXIT_SUCCESS;
+    }
+    else
+    {
+      // Invalid command
+      multilog(log, LOG_ERR, "dada_db_open(): Error: %s '%s' not recognised.\n", HEADER_COMMAND, ctx->command);
+      return -1;
+    }
+  }
+  else
+  {
+    // No command provided at all! 
+    multilog(log, LOG_ERR, "dada_db_open(): Error: an empty %s was provided.\n", HEADER_COMMAND);
+    return -1;
+  }
 
   // get the obs_id of this subobservation
   long this_obs_id = 0;
@@ -62,7 +112,7 @@ int dada_dbfits_open(dada_client_t* client)
     // Close existing fits file (if we have one)    
     if (ctx->fits_ptr != NULL)
     {
-      if (close_fits(&ctx->fits_ptr)) 
+      if (close_fits(client, &ctx->fits_ptr)) 
       {
         multilog(log, LOG_ERR,"dada_db_open(): Error closing fits file.\n");
         return -1;
@@ -197,14 +247,7 @@ int dada_dbfits_open(dada_client_t* client)
       }
       
       // Reset the filenumber
-      ctx->fits_file_number = 0;
-
-      // These need to be set for psrdada
-      client->transfer_bytes = 0;  
-      client->optimal_bytes = 0;
-
-      // we do not want to explicitly transfer the DADA header
-      client->header_transfer = 0;
+      ctx->fits_file_number = 0;      
     }
     else
     {
@@ -219,9 +262,9 @@ int dada_dbfits_open(dada_client_t* client)
     sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);    
       
     /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_gpuboxGG_FF.fits */
-    sprintf(ctx->fits_filename, "%s/%ld_%04d%02d%02d%02d%02d%02d_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
     
-    if (create_fits(&ctx->fits_ptr, ctx->fits_filename)) 
+    if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename)) 
     {
       multilog(log, LOG_ERR,"dada_db_open(): Error creating new fits file.\n");
       return -1;
@@ -299,44 +342,49 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  multilog_t * log = (multilog_t *) ctx->log;
-  
-  uint64_t written  = 0;
-  uint64_t to_write = bytes;
-  uint64_t wrote    = 0;
+  if (strcmp(ctx->command, MWAX_COMMAND_CAPTURE) == 0)
+  {
+    multilog_t * log = (multilog_t *) ctx->log;
+    
+    uint64_t written  = 0;
+    uint64_t to_write = bytes;
+    uint64_t wrote    = 0;
 
-  multilog (log, LOG_DEBUG, "dada_dbfits_io(): Processing block %d.\n", ctx->block_number);
-     
-  multilog(log, LOG_INFO, "dada_dbfits_io(): Writing %d of %d bytes into new image HDU; Marker = %d.\n", ctx->expected_transfer_size_of_integration, bytes, ctx->obs_marker_number); 
+    multilog (log, LOG_DEBUG, "dada_dbfits_io(): Processing block %d.\n", ctx->block_number);
       
-  // Write HDU here!
-  assert(sizeof(float) == sizeof(void *));
-  float* data = (float*)buffer;
-  
-  // Remove the weights from the byte count
-  // Remove any left over space from the byte count too
-  uint64_t hdu_bytes = ctx->expected_transfer_size_of_integration;
+    multilog(log, LOG_INFO, "dada_dbfits_io(): Writing %d of %d bytes into new image HDU; Marker = %d.\n", ctx->expected_transfer_size_of_integration, bytes, ctx->obs_marker_number); 
+        
+    // Write HDU here!
+    assert(sizeof(float) == sizeof(void *));
+    float* data = (float*)buffer;
+    
+    // Remove the weights from the byte count
+    // Remove any left over space from the byte count too
+    uint64_t hdu_bytes = ctx->expected_transfer_size_of_integration;
 
-  // Create the HDU in the FITS file
-  if (create_fits_imghdu(ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
+    // Create the HDU in the FITS file
+    if (create_fits_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
                           ctx->nbaselines, ctx->nfine_chan, ctx->npol,
                           ctx->int_time_msec, data, hdu_bytes))    
-  {
-    // Error!
-    multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
-    return -1;
-  }
-  else
-  {      
-    wrote = to_write;
-    written += wrote;
-    ctx->obs_marker_number += 1;
+    {
+      // Error!
+      multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
+      return -1;
+    }
+    else
+    {      
+      wrote = to_write;
+      written += wrote;
+      ctx->obs_marker_number += 1;
+    }  
+
+    ctx->block_number += 1;
+    ctx->bytes_written += written;
+
+    return bytes;
   }  
-
-  ctx->block_number += 1;
-  ctx->bytes_written += written;
-
-  return bytes;
+  else
+    return 0;
 }
 
 /**
@@ -353,11 +401,16 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  multilog_t * log = (multilog_t *) ctx->log;
+  if (strcmp(ctx->command, MWAX_COMMAND_CAPTURE) == 0)
+  {
+    multilog_t * log = (multilog_t *) ctx->log;
 
-  multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
+    multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
 
-  return dada_dbfits_io(client, buffer, bytes);
+    return dada_dbfits_io(client, buffer, bytes);
+  }
+  else    
+    return bytes;
 }
 
 /**
@@ -376,42 +429,58 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   multilog_t *log = (multilog_t *) client->log;
   multilog(log, LOG_INFO, "dada_dbfits_close(bytes_written=%lu): Started.\n", bytes_written);
   
-  // Some sanity checks:
-  // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
-  int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->int_time_msec / 1000.0));
+  int do_close_fits = 0;
 
-  if (current_duration % ctx->secs_per_subobs != 0)
+  // If we're still in CAPTURE mode...
+  if (strcmp(ctx->command, MWAX_COMMAND_CAPTURE) == 0)
   {
-    multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed at %d secs before we got all %d secs of data!\n", current_duration, ctx->secs_per_subobs);
-    return -1;
+    // Some sanity checks:
+    int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->int_time_msec / 1000.0));
+    
+    // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
+    multilog(log, LOG_INFO, "dada_dbfits_close(): Checking duration based on current marker %d vs obs duration %d.\n", current_duration, ctx->exposure_sec);    
+
+    if (current_duration % ctx->secs_per_subobs != 0)
+    {
+      multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed at %d secs before we got all %d secs of data!\n", current_duration, ctx->secs_per_subobs);
+      return -1;
+    }
+
+    //
+    // TODO: Check with the metabin for info about this observation. Has the duration changed?
+    //    
+    int new_duration = ctx->exposure_sec; //TODO: Fix me! This is a placeholder
+
+    if (ctx->exposure_sec != new_duration)
+    {
+      multilog(log, LOG_INFO,"dada_dbfits_close(): Observation has been cut short. Old duration was %d, new duration is %d.\n", ctx->exposure_sec, new_duration);
+      ctx->exposure_sec = new_duration; // TODO: put new duration from metabin here
+    }
+
+    // Did we hit the end of an obs
+    if (current_duration == ctx->exposure_sec)
+    {      
+      do_close_fits = 1;
+    }
+  }
+  else if (strcmp(ctx->command, MWAX_COMMAND_QUIT) == 0 || strcmp(ctx->command, MWAX_COMMAND_IDLE) == 0)
+  {
+    do_close_fits = 1;
   }
 
-  //
-  // TODO: Check with the metabin for info about this observation. Has the duration changed?
-  //    
-  int new_duration = ctx->exposure_sec; //TODO: Fix me! This is a placeholder
-
-  if (ctx->exposure_sec != new_duration)
-  {
-    multilog(log, LOG_INFO,"dada_dbfits_close(): Observation has been cut short. Old duration was %d, new duration is %d.\n", ctx->exposure_sec, new_duration);
-    ctx->exposure_sec = new_duration; // TODO: put new duration from metabin here
-  }
-
-  multilog(log, LOG_INFO, "dada_dbfits_close(): Checking duration based on current marker %d vs obs duration %d.\n", current_duration, ctx->exposure_sec);
-
-  if (current_duration == ctx->exposure_sec)
+  if (do_close_fits == 1)
   {
     // Observation ends NOW! It got cut short, or we naturally are at the end of the observation 
     // Close existing fits file (if we have one)    
     if (ctx->fits_ptr != NULL)
     {
-      if (close_fits(&ctx->fits_ptr)) 
+      if (close_fits(client, &ctx->fits_ptr)) 
       {
         multilog(log, LOG_ERR,"dada_dbfits_close(): Error closing fits file.\n");
         return -1;
       }
     }
-  }
+  }   
 
   multilog (log, LOG_INFO, "dada_dbfits_close(): completed\n");
 
@@ -433,8 +502,7 @@ int read_dada_header(dada_client_t *client)
   assert(ctx->log != 0);
   multilog_t * log = (multilog_t *) ctx->log;
 
-  ctx->populated = 0;  
-  strncpy(ctx->command, "", MWAX_COMMAND_LEN);
+  ctx->populated = 0;    
   strncpy(ctx->utc_start, "", UTC_START_LEN);
   ctx->obs_offset = 0;
   ctx->nbit = 0;
@@ -460,13 +528,7 @@ int read_dada_header(dada_client_t *client)
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_POPULATED);
     return -1;
   }
-
-  if (ascii_header_get(client->header, HEADER_COMMAND, "%s", &ctx->command) == -1)
-  {
-    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_COMMAND);
-    return -1;
-  }
-
+  
   if (ascii_header_get(client->header, HEADER_UTC_START, "%s", &ctx->utc_start) == -1)
   {
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_UTC_START);
@@ -563,7 +625,6 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }  
   
-
   // Output what we found in the header
   multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated==1?"yes":"no"));
   multilog(log, LOG_INFO, "Obs Id:                   %lu\n", ctx->obs_id);
@@ -572,7 +633,7 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Command:                  %s\n", ctx->command);  
   multilog(log, LOG_INFO, "Start time (UTC):         %s\n", ctx->utc_start);
   multilog(log, LOG_INFO, "Correlator freq res:      %d kHz\n", ctx->fine_chan_width_hz / 1000);
-  multilog(log, LOG_INFO, "Correlator int time:      %0.2f msec\n", (float)ctx->int_time_msec / 1000);        
+  multilog(log, LOG_INFO, "Correlator int time:      %0.2f sec\n", (float)ctx->int_time_msec / 1000);        
   multilog(log, LOG_INFO, "No fine chans per coarse: %d\n", ctx->nfine_chan);
   multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);  
   multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);

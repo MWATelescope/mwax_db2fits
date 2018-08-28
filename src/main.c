@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
   
   // Set some useful params based on our ringbuffer config  
   g_ctx.block_size = ipcbuf_get_bufsz((ipcbuf_t *)(client->data_block));
-  multilog(g_ctx.log, LOG_INFO, "main(): Block size is %lu bytes.\n", g_ctx.block_size);
+  multilog(g_ctx.log, LOG_INFO, "main(): Block size (one integration) is %lu bytes.\n", g_ctx.block_size);
 
   // Launch Health thread  
   pthread_t health_thread;
@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
   {    
     multilog(g_ctx.log, LOG_INFO, "main: dada_client_read()\n");
     
-    if (dada_client_read (client) < 0)
+    if (dada_client_read(client) < 0)
     {
       multilog(g_ctx.log, LOG_ERR, "main: error during transfer\n");
       set_quit(1);
