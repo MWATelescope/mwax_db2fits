@@ -333,6 +333,10 @@ int create_fits_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, 
   long naxis = 2; 
   uint64_t axis1_rows = baselines;
   uint64_t axis2_cols = fine_channels * polarisations * polarisations * 2;   //  we x2 as we store real and imaginary;
+
+  axis1_rows = fine_channels;
+  axis2_cols = baselines * polarisations * polarisations * 2;
+
   long naxes[2] = { axis1_rows, axis2_cols };  
 
   multilog(log, LOG_DEBUG, "Creating new HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);

@@ -150,7 +150,7 @@ int dada_dbfits_open(dada_client_t* client)
       /* Sanity check what we got */
       if (!(ctx->exposure_sec >= 8 && (ctx->exposure_sec % 8 == 0)))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 seconds.\n", HEADER_EXPOSURE_SEC);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 seconds.\n", HEADER_EXPOSURE_SECS);
         return -1;
       }
 
@@ -231,11 +231,11 @@ int dada_dbfits_open(dada_client_t* client)
       ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
       ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_one_fine_channel;
       ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
-      ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs + (ctx->expected_transfer_size_of_one_fine_channel * ctx->no_of_integrations_per_subobs);
+      ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs; //TODO put me back in- this is for a quick test only  + (ctx->expected_transfer_size_of_one_fine_channel * ctx->no_of_integrations_per_subobs);
 
       if (ctx->expected_transfer_size_of_subobs_plus_weights > ctx->transfer_size)
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs);
+        multilog(log, LOG_ERR, "dada_db_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs_plus_weights);
         return -1; 
       }
 
@@ -277,16 +277,16 @@ int dada_dbfits_open(dada_client_t* client)
 
     /* Update the duration */   
     int new_duration_sec = 0;
-    if (ascii_header_get(client->header, HEADER_EXPOSURE_SEC, "%i", &new_duration_sec) == -1)
+    if (ascii_header_get(client->header, HEADER_EXPOSURE_SECS, "%i", &new_duration_sec) == -1)
     {
-      multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SEC);
+      multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SECS);
       return -1;
     }
 
     /* has the duration changed? */
     if (new_duration_sec != ctx->exposure_sec)
     {
-      multilog(log, LOG_INFO, "dada_db_open(): %s has changed from %d sec to %d sec.\n", HEADER_EXPOSURE_SEC, ctx->exposure_sec, new_duration_sec);
+      multilog(log, LOG_INFO, "dada_db_open(): %s has changed from %d sec to %d sec.\n", HEADER_EXPOSURE_SECS, ctx->exposure_sec, new_duration_sec);
     }
     
     /* Update the offset */
@@ -577,9 +577,9 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }
 
-  if (ascii_header_get(client->header, HEADER_EXPOSURE_SEC, "%i", &ctx->exposure_sec) == -1)
+  if (ascii_header_get(client->header, HEADER_EXPOSURE_SECS, "%i", &ctx->exposure_sec) == -1)
   {
-    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SEC);
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_EXPOSURE_SECS);
     return -1;
   }
 
