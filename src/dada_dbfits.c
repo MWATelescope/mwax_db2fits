@@ -229,7 +229,7 @@ int dada_dbfits_open(dada_client_t* client)
       ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
       ctx->expected_transfer_size_of_one_fine_channel = ((ctx->npol * ctx->npol) * bytes_per_complex) * ctx->nbaselines;
       ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
-      ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_one_fine_channel;
+      ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration; //TODO put me back in:  + ctx->expected_transfer_size_of_one_fine_channel;
       ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
       ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs; //TODO put me back in- this is for a quick test only  + (ctx->expected_transfer_size_of_one_fine_channel * ctx->no_of_integrations_per_subobs);
 
