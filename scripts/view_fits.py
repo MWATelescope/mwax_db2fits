@@ -1,8 +1,10 @@
 from astropy.io import fits 
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 
 # freq,baseline,pol
-def peek_fits(filename, ant1, ant2, channel, autosonly):
+def peek_fits(filename, ant1, ant2, channel, autosonly, plot):
    hdul = fits.open(filename)
 
    # look at first real hdu
@@ -10,7 +12,8 @@ def peek_fits(filename, ant1, ant2, channel, autosonly):
    hdul.info()
 
    # print hdu stats
-   print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power") 
+   if plot == False:
+      print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power") 
    ant1 = int(ant1)
    ant2 = int(ant2)
    channel = int(channel)
@@ -21,6 +24,10 @@ def peek_fits(filename, ant1, ant2, channel, autosonly):
    pols = 4
    time = 0
    channels = 32
+
+   plotdata = [] 
+   for c in range(0, channels):
+      plotdata.append(0)
 
    for hdu in hdul[1:5]:
       baseline = 0
@@ -46,14 +53,32 @@ def peek_fits(filename, ant1, ant2, channel, autosonly):
                       yy_i = hdu.data[baseline][index+7]
 
                       power = (xx_r * xx_r) + (yy_r * yy_r)
+                      
+                      plotdata[chan] = plotdata[chan] + power
 
-                      print("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}".format(time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i, power))
+                      if plot == False:
+                         print("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}".format(time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i, power))
 
             baseline = baseline + 1
       time = time + 1   
 
    # clean up
    hdul.close() 
+
+   if plot:
+      for c in range(0, channels):
+         print(c, plotdata[c])
+     
+      plt.plot(plotdata)
+      plt.ylabel("power")
+      plt.yscale("log")
+      plt.xlabel("channel")
+      plt.xticks(np.arange(0,channels,step=1))
+      plt.grid(True)
+      fig = plt.figure()
+      fig.savefig("plot.png")
+      print("saved plot.png")
+      plt.show()
 
    print("Done!\n")
 
@@ -63,6 +88,7 @@ parser.add_argument("-a1", "--ant1", required=False, help="antenna1 of baseline"
 parser.add_argument("-a2", "--ant2", required=False, help="antenna2 of baseline", default=-1)
 parser.add_argument("-c", "--channel", required=False, help="fine channel number", default=-1)
 parser.add_argument("-a", "--autosonly", required=False, help="Only output the auto correlations", action='store_true')
+parser.add_argument("-p", "--plot", required=False, help="Also create plot.png", action='store_true')
 args = vars(parser.parse_args())
 
-peek_fits(args["filename"],args["ant1"],args["ant2"],args["channel"],args["autosonly"])
+peek_fits(args["filename"],args["ant1"],args["ant2"],args["channel"],args["autosonly"],args["plot"])
