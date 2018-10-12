@@ -1,197 +1,228 @@
-from astropy.io import fits 
+from astropy.io import fits
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 
+
 # freq,baseline,pol
 def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles):
-   # constants
-   input_data_tiles = 128
-   baselines = int((input_data_tiles * (input_data_tiles + 1)) / 2 )
-   pols = 4
-   time = 0
-   channels = 32
+    test_scatter()
+    exit(0)
 
-   hdul = fits.open(filename)
+    # constants
+    input_data_tiles = 128
+    pols = 4
+    channels = 32
 
-   # look at first real hdu
-   #hdul.info()
-   # Are we plotting?
-   plot = (ppdplot or gridplot)
+    fits_hdu_list = fits.open(filename)
 
-   ant1 = int(ant1)
-   ant2 = int(ant2)
-   channel = int(channel)
-   ts1 = int(timestep1)
-   ts2 = int(timestep2)
-   max_tiles = int(maxtiles)
+    # look at first real hdu
+    # hdu_list.info()
 
-   if ts2 == -1:
-      ts2 = len(hdul)-1
+    # Are we plotting?
+    plot = (ppdplot or gridplot or phaseplot)
 
-   if max_tiles == -1:
-      max_tiles = input_data_tiles
+    # Sanitise input args
+    ant1 = int(ant1)
+    ant2 = int(ant2)
+    channel = int(channel)
+    ts1 = int(timestep1)
+    ts2 = int(timestep2)
+    max_tiles = int(maxtiles)
 
-   # print params
-   title =  "{0} timesteps= {1} to {2} ant1= {3} ant2= {4} chan= {5} autosonly?= {6} maxtiles= {7} / {8}".format(filename, ts1, ts2, ant1, ant2, channel, autosonly, max_tiles, input_data_tiles)
-   print(title)
+    if ts2 == -1:
+        ts2 = len(fits_hdu_list) - 1
 
-   # basic error check
-   valid = True
-   if valid and ts1 > ts2:
-      valid = False
-      valid_msg = "timestep1 must be less than or equal to timestep2"
+    if max_tiles == -1:
+        max_tiles = input_data_tiles
 
-   if valid and ts1 < 1:
-      valid = False
-      valid_msg = "timestep1 must be greater than or equal to 1"
+    # print params
+    title = "{0} timesteps= {1} to {2} ant1= {3} ant2= {4} chan= {5} autosonly?= {6} maxtiles= {7} / {8}".format(
+        filename, ts1, ts2, ant1, ant2, channel, autosonly, max_tiles, input_data_tiles)
+    print(title)
 
-   if valid and ant1 > ant2:
-      valid = False
-      valid_msg = "ant1 must be less than or equal to ant2"
+    # basic error check
+    valid = True
+    valid_msg = ""
 
-   if valid and channel > channels:
-      valid = False
-      valid_msg = "channel must be between 0 and {0}".format(channels)
+    if valid and ts1 > ts2:
+        valid = False
+        valid_msg = "timestep1 must be less than or equal to timestep2"
 
-   if valid and phaseplot and (channel != -1 or ant1 == -1 or ant2 == -1 or ts2-ts1 != 0):
-      valid = False
-      valid_msg = "phaseplot requires 1 baseline, 1 timestep and all fine channels"
+    if valid and ts1 < 1:
+        valid = False
+        valid_msg = "timestep1 must be greater than or equal to 1"
 
-   if valid and max_tiles > input_data_tiles:
-      valid = False
-      valid_msg = "maxtiles cannot be larger than input tiles {0}".format(input_data_tiles)
+    if valid and ant1 > ant2:
+        valid = False
+        valid_msg = "ant1 must be less than or equal to ant2"
 
-   if valid == False:
-      print("Error: {0}".format(valid_msg))
-      exit(-1)
+    if valid and channel > channels:
+        valid = False
+        valid_msg = "channel must be between 0 and {0}".format(channels)
 
-   # initialise the bins for out plot
-   plot_ppd_data = [0] * channels
+    if valid and phaseplot and (channel != -1 or ant1 == -1 or ant2 == -1 or ts2 - ts1 != 0):
+        valid = False
+        valid_msg = "phaseplot requires 1 baseline, 1 timestep and all fine channels"
 
-   plot_grid_data = np.empty(shape=(max_tiles,max_tiles)) 
-   plot_grid_data.fill(0)
+    if valid and max_tiles > input_data_tiles:
+        valid = False
+        valid_msg = "maxtiles cannot be larger than input tiles {0}".format(input_data_tiles)
 
-   plot_phase_data_x = [0] * channels 
-   plot_phase_data_y = [0] * channels
+    if not valid:
+        print("Error: {0}".format(valid_msg))
+        exit(-1)
 
-   # create a list of the hdus we want
-   hdu_list = []
-   
-   for h in range(ts1, ts2+1):
-      hdu_list.append(hdul[h])
+    # initialise the bins for out plot
+    plot_ppd_data = [0] * channels
 
-   # print a csv header if we're not plotting
-   if plot == False:
-      print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power")
+    plot_grid_data = np.empty(shape=(max_tiles, max_tiles))
+    plot_grid_data.fill(0)
 
-   for hdu in hdu_list:
-      time = hdu.header["MARKER"]+1
-      baseline = 0
+    plot_phase_data_x = [0] * channels
+    plot_phase_data_y = [0] * channels
 
-      for i in range(0, input_data_tiles):
-         for j in range(i, input_data_tiles):
-            if (i < max_tiles and j < max_tiles) and ((i == j and autosonly == True) or (autosonly == False and ((ant1 == -1 or ant1 == i) and (ant2 == -1 or ant2 == j)))): 
-               for chan in range(0, channels): 
-                   if chan == channel or channel == -1: 
-                      index = chan * (pols*2)
-                      
-                      xx_r = hdu.data[baseline][index]
-                      xx_i = hdu.data[baseline][index+1]
+    # create a list of the hdus we want
+    hdu_list = []
 
-                      xy_r = hdu.data[baseline][index+2]
-                      xy_i = hdu.data[baseline][index+3]
+    for h in range(ts1, ts2 + 1):
+        hdu_list.append(fits_hdu_list[h])
 
-                      yx_r = hdu.data[baseline][index+4]
-                      yx_i = hdu.data[baseline][index+5]
+    # print a csv header if we're not plotting
+    if not plot:
+        print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power")
 
-                      yy_r = hdu.data[baseline][index+6]
-                      yy_i = hdu.data[baseline][index+7]
+    for hdu in hdu_list:
+        time = hdu.header["MARKER"] + 1
+        baseline = 0
 
-                      power = (xx_r * xx_r) + (yy_r * yy_r)
-                      phase_x = math.degrees(math.atan2(xx_i, xx_r))
-                      phase_y = math.degrees(math.atan2(yy_i, yy_r))
-                      
-                      plot_ppd_data[chan] = plot_ppd_data[chan] + power 
-                      plot_grid_data[j][i] = plot_grid_data[j][i] + power 
-                      plot_phase_data_x[chan] = phase_x
-                      plot_phase_data_y[chan] = phase_y
+        for i in range(0, input_data_tiles):
+            for j in range(i, input_data_tiles):
+                if (i < max_tiles and j < max_tiles) and ((i == j and autosonly == True) or (
+                        autosonly == False and ((ant1 == -1 or ant1 == i) and (ant2 == -1 or ant2 == j)))):
+                    for chan in range(0, channels):
+                        if chan == channel or channel == -1:
+                            index = chan * (pols * 2)
 
-                      if plot == False:
-                         print("{0},{1},{2},{3},{4},{5:.2e},{6:.2e},{7:.2e},{8:.2e},{9:.2e},{10:.2e},{11:.2e},{12:.2e},{13:.2e}".format(time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i, power))
+                            xx_r = hdu.data[baseline][index]
+                            xx_i = hdu.data[baseline][index + 1]
 
-            baseline = baseline + 1
+                            xy_r = hdu.data[baseline][index + 2]
+                            xy_i = hdu.data[baseline][index + 3]
 
-   # clean up
-   hdul.close() 
+                            yx_r = hdu.data[baseline][index + 4]
+                            yx_i = hdu.data[baseline][index + 5]
 
-   if ppdplot:
-      do_ppd_plot(title, channels, plot_ppd_data)
+                            yy_r = hdu.data[baseline][index + 6]
+                            yy_i = hdu.data[baseline][index + 7]
 
-   if gridplot:
-      do_grid_plot(title, max_tiles, plot_grid_data)
+                            power = (xx_r * xx_r) + (yy_r * yy_r)
+                            phase_x = math.degrees(math.atan2(xx_i, xx_r))
+                            phase_y = math.degrees(math.atan2(yy_i, yy_r))
 
-   if phaseplot:
-      do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y)
+                            plot_ppd_data[chan] = plot_ppd_data[chan] + power
+                            plot_grid_data[j][i] = plot_grid_data[j][i] + power
+                            plot_phase_data_x[chan] = phase_x
+                            plot_phase_data_y[chan] = phase_y
 
-   print("Done!\n")
+                            if not plot:
+                                print(
+                                    "{0},{1},{2},{3},{4},{5:.2e},{6:.2e},{7:.2e},{8:.2e},{9:.2e},{10:.2e},{11:.2e},{12:.2e},{13:.2e}".format(
+                                        time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
+                                        power))
+
+                baseline = baseline + 1
+
+    # clean up
+    hdu_list.close()
+
+    if ppdplot:
+        do_ppd_plot(title, channels, plot_ppd_data)
+
+    if gridplot:
+        do_grid_plot(title, max_tiles, plot_grid_data)
+
+    if phaseplot:
+        do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y)
+
+    print("Done!\n")
+
 
 def do_ppd_plot(title, channels, plot_ppd_data):
-   for c in range(0, channels):
-      plot_ppd_data[c] = math.log10(plot_ppd_data[c]+1)*10
-      print(c, plot_ppd_data[c])
+    for c in range(0, channels):
+        plot_ppd_data[c] = math.log10(plot_ppd_data[c] + 1) * 10
+        print(c, plot_ppd_data[c])
 
-   plt.plot(plot_ppd_data)
-   plt.ylabel("dB")
-   #plt.yscale("log")
-   plt.xlabel("fine channel")
-   plt.xticks(np.arange(0,channels,step=1))
-   plt.title(title)
-   plt.tight_layout()
-   plt.grid(True)
-   fig = plt.figure()
-   fig.savefig("ppd_plot.png")
-   print("saved ppd_plot.png")
-   plt.show()
+    plt.plot(plot_ppd_data)
+    plt.ylabel("dB")
+    plt.xlabel("fine channel")
+    plt.xticks(np.arange(0, channels, step=1))
+    plt.title(title)
+    plt.tight_layout()
+    plt.grid(True)
+    fig = plt.figure()
+    fig.savefig("ppd_plot.png")
+    print("saved ppd_plot.png")
+    plt.show()
+
 
 def do_grid_plot(title, tiles, plot_grid_data):
-   for t1 in range(0, tiles):
-      for t2 in range(t1, tiles):
-         plot_grid_data[t2][t1] = math.log10(plot_grid_data[t2][t1]+1)*10
-         print(t1,t2, plot_grid_data[t2][t1])
+    for t1 in range(0, tiles):
+        for t2 in range(t1, tiles):
+            plot_grid_data[t2][t1] = math.log10(plot_grid_data[t2][t1] + 1) * 10
+            print(t1, t2, plot_grid_data[t2][t1])
 
-   plt.ylabel("ant2")
-   #plt.yscale("log")
-   plt.xlabel("ant1")
-   plt.xticks(np.arange(0, tiles, step=1))
-   plt.yticks(np.arange(0, tiles, step=1))
-   plt.title(title)
-   plt.tight_layout()
-   plt.grid(True)
-   plt.imshow(plot_grid_data, cmap="inferno", interpolation="nearest")
-   #fig = plt.figure()
-   #fig.savefig("grid_plot.png")
-   #print("saved grid_plot.png")
-   plt.show()
+    plt.ylabel("ant2")
+    plt.xlabel("ant1")
+    plt.xticks(np.arange(0, tiles, step=1))
+    plt.yticks(np.arange(0, tiles, step=1))
+    plt.title(title)
+    plt.tight_layout()
+    plt.grid(True)
+    plt.imshow(plot_grid_data, cmap="inferno", interpolation="nearest")
+    # fig = plt.figure()
+    # fig.savefig("grid_plot.png")
+    # print("saved grid_plot.png")
+    plt.show()
+
 
 def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
-   for c in range(0, channels):
-      print(c, plot_phase_data_x[c], plot_phase_data_y[c])
+    for c in range(0, channels):
+        print(c, plot_phase_data_x[c], plot_phase_data_y[c])
 
-   plt.plot(plot_phase_data_x)
-   plt.plot(plot_phase_data_y)
-   plt.ylabel("phase (deg)")
-   #plt.yscale("log")
-   plt.xlabel("fine channel")
-   plt.xticks(np.arange(0,channels,step=1))
-   plt.title(title)
-   plt.tight_layout()
-   plt.grid(True)
-   fig = plt.figure()
-   fig.savefig("phase_plot.png")
-   print("saved phase_plot.png")
-   plt.show()
+    plt.plot(plot_phase_data_x)
+    plt.plot(plot_phase_data_y)
+    plt.ylabel("phase (deg)")
+    plt.xlabel("fine channel")
+    plt.xticks(np.arange(0, channels, step=1))
+    plt.title(title)
+    plt.tight_layout()
+    plt.grid(True)
+    fig = plt.figure()
+    fig.savefig("phase_plot.png")
+    print("saved phase_plot.png")
+    plt.show()
+
+
+def test_scatter():
+    title = "test"
+    channels = 3
+    x = [1, 2, 3]
+    y = [-145, 0, 145]
+
+    plt.scatter(x, y)
+    plt.ylabel("phase (deg)")
+    plt.xlabel("fine channel")
+    plt.xticks(np.arange(0, channels, step=1))
+    plt.title(title)
+    plt.tight_layout()
+    plt.grid(True)
+    fig = plt.figure()
+    fig.savefig("phase_plot.png")
+    print("saved phase_plot.png")
+    plt.show()
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--filename", required=True, help="fits filename")
@@ -203,8 +234,11 @@ parser.add_argument("-c", "--channel", required=False, help="fine channel number
 parser.add_argument("-a", "--autosonly", required=False, help="Only output the auto correlations", action='store_true')
 parser.add_argument("-p", "--ppdplot", required=False, help="Also create a ppd plot", action='store_true')
 parser.add_argument("-g", "--gridplot", required=False, help="Also create a grid / baseline plot", action='store_true')
-parser.add_argument("-ph", "--phaseplot", required=False, help="Will do a phase plot for a baseline and timestep", action='store_true')
-parser.add_argument("-mt", "--maxtiles", required=False, help="Maximum tiles to use when displaying data or plots. Default is all", default=-1)
+parser.add_argument("-ph", "--phaseplot", required=False, help="Will do a phase plot for a baseline and timestep",
+                    action='store_true')
+parser.add_argument("-mt", "--maxtiles", required=False,
+                    help="Maximum tiles to use when displaying data or plots. Default is all", default=-1)
 args = vars(parser.parse_args())
 
-peek_fits(args["filename"],args["timestep1"],args["timestep2"],args["ant1"],args["ant2"],args["channel"],args["autosonly"],args["ppdplot"],args["gridplot"],args["phaseplot"],args["maxtiles"])
+peek_fits(args["filename"], args["timestep1"], args["timestep2"], args["ant1"], args["ant2"], args["channel"],
+          args["autosonly"], args["ppdplot"], args["gridplot"], args["phaseplot"], args["maxtiles"])
