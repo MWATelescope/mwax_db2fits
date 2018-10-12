@@ -7,9 +7,6 @@ import math
 
 # freq,baseline,pol
 def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles):
-    test_scatter()
-    exit(0)
-
     # constants
     input_data_tiles = 128
     pols = 4
@@ -191,27 +188,11 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
     for c in range(0, channels):
         print(c, plot_phase_data_x[c], plot_phase_data_y[c])
 
-    plt.plot(plot_phase_data_x)
-    plt.plot(plot_phase_data_y)
-    plt.ylabel("phase (deg)")
-    plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=1))
-    plt.title(title)
-    plt.tight_layout()
-    plt.grid(True)
-    fig = plt.figure()
-    fig.savefig("phase_plot.png")
-    print("saved phase_plot.png")
-    plt.show()
+    channel_list = range(0, channels)
 
+    plt.scatter(channel_list, plot_phase_data_x)
+    plt.scatter(channel_list, plot_phase_data_y)
 
-def test_scatter():
-    title = "test"
-    channels = 3
-    x = [1, 2, 3]
-    y = [-145, 0, 145]
-
-    plt.scatter(x, y)
     plt.ylabel("phase (deg)")
     plt.xlabel("fine channel")
     plt.xticks(np.arange(0, channels, step=1))
