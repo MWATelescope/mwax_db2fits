@@ -54,39 +54,30 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   //
   // Add the core keywords
   //
-  // SIMPLE
-  int simple = TRUE;  
-  char key_simple[FLEN_KEYWORD] = "SIMPLE";
-
-  if ( fits_write_key(*fptr, TLOGICAL, key_simple, &simple, "conforms to FITS standard", &status) )
+  // SIMPLE  
+  if ( fits_write_key(*fptr, TLOGICAL, MWA_FITS_KEY_SIMPLE, (int*)MWA_FITS_VALUE_SIMPLE, "conforms to FITS standard", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_simple, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_SIMPLE, filename, status, error_text);
     return -1;
   }
 
   // BITPIX
-  long bitpix = 8;
-  char key_bitpix[FLEN_KEYWORD] = "BITPIX";
-
-  if ( fits_write_key(*fptr, TLONG, key_bitpix, &bitpix, "array data type", &status) )
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_BITPIX, (long*)MWA_FITS_VALUE_BITPIX, "array data type", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_bitpix, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_BITPIX, filename, status, error_text);
     return -1;
   }
 
   // NAXIS
-  long naxis = 0;
-  char key_naxis[FLEN_KEYWORD] = "NAXIS";
-
-  if ( fits_write_key(*fptr, TLONG, key_naxis, &naxis, "number of array dimensions", &status) )
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_NAXIS, (long*)MWA_FITS_VALUE_NAXIS, "number of array dimensions", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_naxis, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NAXIS, filename, status, error_text);
     return -1;
   }
   
@@ -108,70 +99,74 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
     return -1;
   }
 
-  // TIME
-  char key_time[FLEN_KEYWORD] = "TIME";
+  // TIME  
   long unix_time = ctx->unix_time;
-  if ( fits_write_key(*fptr, TLONG, key_time, &(unix_time), "Unix time (seconds)", &status) )
+
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_TIME, &(unix_time), "Unix time (seconds)", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_time, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_TIME, filename, status, error_text);
     return -1;
   }
 
-  // MILLITIM
-  char key_millitim[FLEN_KEYWORD] = "MILLITIM";
+  // MILLITIM  
   int unix_millitime = ctx->unix_time_msec;
-  if ( fits_write_key(*fptr, TINT, key_millitim, &(unix_millitime), "Milliseconds since TIME", &status) )
+
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_MILLITIM, &(unix_millitime), "Milliseconds since TIME", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_millitim, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MILLITIM, filename, status, error_text);
     return -1;
   }
 
-  // INTTIME
-  char key_inttime[FLEN_KEYWORD] = "INTTIME";
+  // INTTIME  
   float int_time_sec = (float)ctx->int_time_msec / 1000.0;
-  if ( fits_write_key(*fptr, TFLOAT, key_inttime, &(int_time_sec), "Integration time (s)", &status) )
+
+  if ( fits_write_key(*fptr, TFLOAT, MWA_FITS_KEY_INTTIME, &(int_time_sec), "Integration time (s)", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_inttime, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_INTTIME, filename, status, error_text);
     return -1;
   }
   
   // MARKER  
-  char key_marker[FLEN_KEYWORD] = "MARKER";
   int marker = ctx->obs_marker_number;
 
-  if (fits_write_key(*fptr, TINT, key_marker, &marker, "Data offset marker (all channels should match)", &status))
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_MARKER, &marker, "Data offset marker (all channels should match)", &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing fits key %s into HDU. Error: %d -- %s\n", key_marker, status, error_text);
+    multilog(log, LOG_ERR, "Error writing fits key %s into HDU. Error: %d -- %s\n", MWA_FITS_KEY_MARKER, status, error_text);
     return EXIT_FAILURE;
   }
 
-  // PROJID
-  char key_projid[FLEN_KEYWORD] = "PROJID";
-
-  if ( fits_write_key(*fptr, TSTRING, key_projid, ctx->proj_id, "MWA Project Id", &status) )
+  // PROJID  
+  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_PROJID, ctx->proj_id, "MWA Project Id", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_projid, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_PROJID, filename, status, error_text);
     return -1;
   }
 
-  // OBSID
-  char key_obsid[FLEN_KEYWORD] = "OBSID";
-
-  if ( fits_write_key(*fptr, TLONG, key_obsid, &(ctx->obs_id), "MWA Observation Id", &status) )
+  // OBSID  
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_OBSID, &(ctx->obs_id), "MWA Observation Id", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", key_obsid, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_OBSID, filename, status, error_text);
+    return -1;
+  }
+
+  // CORR_VERS
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_VER, (int*)MWA_FITS_VALUE_CORR_VER, "MWA Correlator Version", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_VER, filename, status, error_text);
     return -1;
   }
 

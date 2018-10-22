@@ -21,6 +21,22 @@
 #define UTC_START_LEN 20    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
 #define PROJ_ID_LEN 255     // Size of the Project ID used by the MWA metadata database
 
+// Keys and some hard coded values for the 1st HDU of the fits file produced
+#define MWA_FITS_KEY_SIMPLE "SIMPLE"
+#define MWA_FITS_VALUE_SIMPLE TRUE
+#define MWA_FITS_KEY_BITPIX "BITPIX"
+#define MWA_FITS_VALUE_BITPIX 8
+#define MWA_FITS_KEY_NAXIS "NAXIS"
+#define MWA_FITS_VALUE_NAXIS 0
+#define MWA_FITS_KEY_TIME "TIME"
+#define MWA_FITS_KEY_MILLITIM "MILLITIM"
+#define MWA_FITS_KEY_INTTIME "INTTIME"
+#define MWA_FITS_KEY_MARKER "MARKER"
+#define MWA_FITS_KEY_PROJID "PROJID"
+#define MWA_FITS_KEY_OBSID "OBSID"
+#define MWA_FITS_KEY_CORR_VER "CORR_VER"
+#define MWA_FITS_VALUE_CORR_VER 2
+
 typedef struct dada_db_s {
     // PSRDADA stuff
     uint64_t header_size;     // size of the DADA header blocks
