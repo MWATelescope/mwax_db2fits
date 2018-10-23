@@ -55,7 +55,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // Add the core keywords
   //
   // SIMPLE  
-  if ( fits_write_key(*fptr, TLOGICAL, MWA_FITS_KEY_SIMPLE, (int*)MWA_FITS_VALUE_SIMPLE, "conforms to FITS standard", &status) )
+  int simple = MWA_FITS_VALUE_SIMPLE;
+
+  if ( fits_write_key(*fptr, TLOGICAL, MWA_FITS_KEY_SIMPLE, &(simple), "conforms to FITS standard", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
@@ -64,7 +66,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   }
 
   // BITPIX
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_BITPIX, (long*)MWA_FITS_VALUE_BITPIX, "array data type", &status) )
+  long bitpix = MWA_FITS_VALUE_BITPIX;
+
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_BITPIX, &(bitpix), "array data type", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
@@ -73,7 +77,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   }
 
   // NAXIS
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_NAXIS, (long*)MWA_FITS_VALUE_NAXIS, "number of array dimensions", &status) )
+  long naxis = MWA_FITS_VALUE_NAXIS;
+
+  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_NAXIS, &(naxis), "number of array dimensions", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
@@ -162,7 +168,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   }
 
   // CORR_VERS
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_VER, (int*)MWA_FITS_VALUE_CORR_VER, "MWA Correlator Version", &status) )
+  int corr_ver = MWA_FITS_VALUE_CORR_VER;
+  
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_VER, &(corr_ver), "MWA Correlator Version", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
