@@ -15,7 +15,7 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
     fits_hdu_list = fits.open(filename)
 
     # look at first real hdu
-    # hdu_list.info()
+    # fits_hdu_list.info()
 
     # Are we plotting?
     plot = (ppdplot or gridplot or phaseplot)
@@ -125,14 +125,14 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
 
                             if not plot:
                                 print(
-                                    "{0},{1},{2},{3},{4},{5:.2e},{6:.2e},{7:.2e},{8:.2e},{9:.2e},{10:.2e},{11:.2e},{12:.2e},{13:.2e}".format(
+                                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}".format(
                                         time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
                                         power))
 
                 baseline = baseline + 1
 
     # clean up
-    hdu_list.close()
+    fits_hdu_list.close()
 
     if ppdplot:
         do_ppd_plot(title, channels, plot_ppd_data)
