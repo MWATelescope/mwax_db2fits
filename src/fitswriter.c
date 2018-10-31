@@ -274,8 +274,10 @@ int create_fits_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, 
   // Each imagehdu will be [baseline][freq][pols][real][imaginary] for an integration
   // So, if we think of the HDU as a 2d matrix, it would be:
   //
-  // NAXIS1 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
-  // NAXIS2 = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
+  // NAXIS1 is rows, NAXIS2 is cols. We want NAXIS1 < NAXIS2 for efficiency
+  // NAXIS1 = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
+  // NAXIS2 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
+  // 
   //
   // [time][baseline][freq][pol]
   //

@@ -8,7 +8,7 @@ import math
 # freq,baseline,pol
 def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles):
     # constants
-    input_data_tiles = 128
+    input_data_tiles = 144
     pols = 4
     channels = 32
 
@@ -114,7 +114,7 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
                             yy_r = hdu.data[baseline][index + 6]
                             yy_i = hdu.data[baseline][index + 7]
 
-                            power = (xx_r * xx_r) + (yy_r * yy_r)
+                            power = (xx_r * xx_r) + (yy_r * yy_r) + (xx_i * xx_i) + (yy_i * yy_i)
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
                             phase_y = math.degrees(math.atan2(yy_i, yy_r))
 

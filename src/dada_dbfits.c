@@ -160,9 +160,9 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
-      if (!(ctx->coarse_channel > 0 && ctx->coarse_channel <=24))
+      if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <24))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 and 24.\n", HEADER_COARSE_CHANNEL);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 23.\n", HEADER_COARSE_CHANNEL);
         return -1;
       }
 
@@ -435,14 +435,14 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   if (strcmp(ctx->command, MWAX_COMMAND_CAPTURE) == 0)
   {
     // Some sanity checks:
-    int current_duration = (int)((float)ctx->obs_marker_number * ((float)ctx->int_time_msec / 1000.0));
+    int current_duration = (int)((float)(ctx->obs_marker_number) * ((float)ctx->int_time_msec / 1000.0));
     
     // We should be at a marker which when multiplied by int_time should be a multuple of ctx->obs_secs_per_subobs (8 seconds nominally).
     multilog(log, LOG_INFO, "dada_dbfits_close(): Checking duration based on current marker %d vs obs duration %d.\n", current_duration, ctx->exposure_sec);    
 
     if (current_duration % ctx->secs_per_subobs != 0)
     {
-      multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed at %d secs before we got all %d secs of data!\n", current_duration, ctx->secs_per_subobs);
+      multilog(log, LOG_ERR,"dada_dbfits_close(): Error, the dada ringbuffer closed at %d secs before we got all %d secs of data! (marker=%d)\n", current_duration, ctx->secs_per_subobs, ctx->obs_marker_number);
       return -1;
     }
 
