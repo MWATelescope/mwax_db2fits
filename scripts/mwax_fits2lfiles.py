@@ -41,12 +41,14 @@ def process_fits(input_filename, output_cc_filename, output_ac_filename):
 
     fits_hdu_list.close()
 
-description = "mwax correlator fits file to l_files utility"
-parser = argparse.ArgumentParser(description=description)
-parser.add_argument("-i", "--input_mwax_filename", required=True, help="input mwax fits filename")
-parser.add_argument("-c", "--output_cross_filename", required=True, help="output cross correlations filename")
-parser.add_argument("-a", "--output_autos_filename", required=True, help="output auto correlations filename")
 
-args = vars(parser.parse_args())
+if __name__ == '__main__':
+    description = "mwax correlator fits file to l_files utility"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-i", "--input_mwax_filename", required=True, help="input mwax fits filename")
+    parser.add_argument("-c", "--output_cross_filename", required=True, help="output cross correlations filename")
+    parser.add_argument("-a", "--output_autos_filename", required=True, help="output auto correlations filename")
 
-process_fits(args["input_mwax_filename"], args["output_cross_filename"], args["output_autos_filename"])
+    args = vars(parser.parse_args())
+
+    process_fits(args["input_mwax_filename"], args["output_cross_filename"], args["output_autos_filename"])

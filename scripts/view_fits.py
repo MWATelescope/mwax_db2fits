@@ -205,21 +205,22 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
     plt.show()
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--filename", required=True, help="fits filename")
-parser.add_argument("-t1", "--timestep1", required=False, help="start timestep (1 based index)", default=1)
-parser.add_argument("-t2", "--timestep2", required=False, help="end timestep (defaults to last index)", default=-1)
-parser.add_argument("-a1", "--ant1", required=False, help="antenna1 of baseline", default=-1)
-parser.add_argument("-a2", "--ant2", required=False, help="antenna2 of baseline", default=-1)
-parser.add_argument("-c", "--channel", required=False, help="fine channel number", default=-1)
-parser.add_argument("-a", "--autosonly", required=False, help="Only output the auto correlations", action='store_true')
-parser.add_argument("-p", "--ppdplot", required=False, help="Also create a ppd plot", action='store_true')
-parser.add_argument("-g", "--gridplot", required=False, help="Also create a grid / baseline plot", action='store_true')
-parser.add_argument("-ph", "--phaseplot", required=False, help="Will do a phase plot for a baseline and timestep",
-                    action='store_true')
-parser.add_argument("-mt", "--maxtiles", required=False,
-                    help="Maximum tiles to use when displaying data or plots. Default is all", default=-1)
-args = vars(parser.parse_args())
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--filename", required=True, help="fits filename")
+    parser.add_argument("-t1", "--timestep1", required=False, help="start timestep (1 based index)", default=1)
+    parser.add_argument("-t2", "--timestep2", required=False, help="end timestep (defaults to last index)", default=-1)
+    parser.add_argument("-a1", "--ant1", required=False, help="antenna1 of baseline", default=-1)
+    parser.add_argument("-a2", "--ant2", required=False, help="antenna2 of baseline", default=-1)
+    parser.add_argument("-c", "--channel", required=False, help="fine channel number", default=-1)
+    parser.add_argument("-a", "--autosonly", required=False, help="Only output the auto correlations", action='store_true')
+    parser.add_argument("-p", "--ppdplot", required=False, help="Also create a ppd plot", action='store_true')
+    parser.add_argument("-g", "--gridplot", required=False, help="Also create a grid / baseline plot", action='store_true')
+    parser.add_argument("-ph", "--phaseplot", required=False, help="Will do a phase plot for a baseline and timestep",
+                        action='store_true')
+    parser.add_argument("-mt", "--maxtiles", required=False,
+                        help="Maximum tiles to use when displaying data or plots. Default is all", default=-1)
+    args = vars(parser.parse_args())
 
-peek_fits(args["filename"], args["timestep1"], args["timestep2"], args["ant1"], args["ant2"], args["channel"],
-          args["autosonly"], args["ppdplot"], args["gridplot"], args["phaseplot"], args["maxtiles"])
+    peek_fits(args["filename"], args["timestep1"], args["timestep2"], args["ant1"], args["ant2"], args["channel"],
+              args["autosonly"], args["ppdplot"], args["gridplot"], args["phaseplot"], args["maxtiles"])
