@@ -20,22 +20,8 @@
 #define MWAX_COMMAND_LEN 32 // Size of the command in PSRDADA header. E.g. "CAPTURE","QUIT","IDLE"
 #define UTC_START_LEN 20    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
 #define PROJ_ID_LEN 255     // Size of the Project ID used by the MWA metadata database
-
-// Keys and some hard coded values for the 1st HDU of the fits file produced
-#define MWA_FITS_KEY_SIMPLE "SIMPLE"
-#define MWA_FITS_VALUE_SIMPLE TRUE
-#define MWA_FITS_KEY_BITPIX "BITPIX"
-#define MWA_FITS_VALUE_BITPIX 8
-#define MWA_FITS_KEY_NAXIS "NAXIS"
-#define MWA_FITS_VALUE_NAXIS 0
-#define MWA_FITS_KEY_TIME "TIME"
-#define MWA_FITS_KEY_MILLITIM "MILLITIM"
-#define MWA_FITS_KEY_INTTIME "INTTIME"
-#define MWA_FITS_KEY_MARKER "MARKER"
-#define MWA_FITS_KEY_PROJID "PROJID"
-#define MWA_FITS_KEY_OBSID "OBSID"
-#define MWA_FITS_KEY_CORR_VER "CORR_VER"
-#define MWA_FITS_VALUE_CORR_VER 2
+#define HOST_NAME_LEN 64 
+#define IP_AS_STRING_LEN 15 // xxx.xxx.xxx.xxx   
 
 typedef struct dada_db_s {
     // PSRDADA stuff
@@ -47,6 +33,9 @@ typedef struct dada_db_s {
     char block_open;          // flag for currently open output HDU
     uint64_t bytes_written;   // number of bytes currently written to output HDU
     uint64_t bytes_read;
+
+    // Common
+    char hostname[HOST_NAME_LEN+1];
 
     // FITS info
     char* destination_dir;
@@ -69,12 +58,16 @@ typedef struct dada_db_s {
     char proj_id[PROJ_ID_LEN];
     int exposure_sec;    
     int coarse_channel;
+    int corr_coarse_channel;
     int secs_per_subobs;
     long unix_time;
     int unix_time_msec;
     int fine_chan_width_hz;
     int nfine_chan;
-    int bandwidth_hz;          
+    int bandwidth_hz;       
+    char multicast_ip[IP_AS_STRING_LEN + 1];
+    int multicast_port;
+    char multicast_src_ip[IP_AS_STRING_LEN + 1];
     
     // Not from header- calculated values
     uint64_t nbaselines;                        

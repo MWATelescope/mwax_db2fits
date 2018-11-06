@@ -8,14 +8,18 @@ import math
 # freq,baseline,pol
 def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles):
     # constants
-    input_data_tiles = 144
-    pols = 4
-    channels = 32
+    values = 2 # real and imaginary
+    pols = 4   # xx,xy,yx,yy
 
     fits_hdu_list = fits.open(filename)
 
-    # look at first real hdu
-    # fits_hdu_list.info()
+    # Get number of tiles based on baseline count
+    bl = fits_hdu_list[1].header["NAXIS2"]
+    input_data_tiles = int((-1 + math.sqrt(1+(8*bl)))/2)
+
+    # Get fine channel count
+    chan_x_pols_x_vals = fits_hdu_list[1].header["NAXIS1"]
+    channels = int((chan_x_pols_x_vals / pols) / values)
 
     # Are we plotting?
     plot = (ppdplot or gridplot or phaseplot)
@@ -154,7 +158,7 @@ def do_ppd_plot(title, channels, plot_ppd_data):
     plt.plot(plot_ppd_data)
     plt.ylabel("dB")
     plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=1))
+    plt.xticks(np.arange(0, channels, step=channels/10))
     plt.title(title)
     plt.tight_layout()
     plt.grid(True)
@@ -195,7 +199,7 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
 
     plt.ylabel("phase (deg)")
     plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=1))
+    plt.xticks(np.arange(0, channels, step=channels / 10))
     plt.title(title)
     plt.tight_layout()
     plt.grid(True)

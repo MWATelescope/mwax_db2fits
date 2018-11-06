@@ -12,6 +12,27 @@
 
 #define FITS_SIZE_CUTOFF_BYTES 200000
 
+// Keys and some hard coded values for the 1st HDU of the fits file produced
+#define MWA_FITS_KEY_SIMPLE "SIMPLE"
+#define MWA_FITS_VALUE_SIMPLE TRUE
+#define MWA_FITS_KEY_BITPIX "BITPIX"
+#define MWA_FITS_VALUE_BITPIX 8
+#define MWA_FITS_KEY_NAXIS "NAXIS"
+#define MWA_FITS_VALUE_NAXIS 0
+#define MWA_FITS_KEY_TIME "TIME"
+#define MWA_FITS_KEY_MILLITIM "MILLITIM"
+#define MWA_FITS_KEY_INTTIME "INTTIME"
+#define MWA_FITS_KEY_MARKER "MARKER"
+#define MWA_FITS_KEY_PROJID "PROJID"
+#define MWA_FITS_KEY_OBSID "OBSID"
+#define MWA_FITS_KEY_CORR_VER "CORR_VER"
+#define MWA_FITS_VALUE_CORR_VER 2
+#define MWA_FITS_KEY_CORR_HOST "CORR_HOST"
+#define MWA_FITS_KEY_CORR_CHAN "CORR_CHAN"
+#define MWA_FITS_KEY_MC_IP "MC_IP"
+#define MWA_FITS_KEY_MC_PORT "MC_PORT"
+#define MWA_FITS_KEY_MC_SRC_IP "MC_SRC_IP"
+
 /*typedef struct 
 {
     long obsid;

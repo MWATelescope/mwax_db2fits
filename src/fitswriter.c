@@ -178,6 +178,55 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
     return -1;
   }
 
+  // CORR_HOST
+  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_CORR_HOST, ctx->hostname, "MWA Project Id", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_HOST, filename, status, error_text);
+    return -1;
+  }
+
+  // CORR_CHAN    
+  int corr_chan = ctx->corr_coarse_channel;
+
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_CHAN, &(corr_chan), "Correlator coarse channel", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_CHAN, filename, status, error_text);
+    return -1;
+  }
+
+  // MC_IP  
+  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MC_IP, ctx->multicast_ip, "Multicast IP", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MC_IP, filename, status, error_text);
+    return -1;
+  }
+
+  // MC_PORT
+  int multicast_port = 0;
+
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_MC_PORT, &(multicast_port), "Multicast Port", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MC_PORT, filename, status, error_text);
+    return -1;
+  }
+
+  // MC_SRC_IP  
+  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MC_SRC_IP, ctx->multicast_src_ip, "Multicast Source IP", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MC_SRC_IP, filename, status, error_text);
+    return -1;
+  }
+
   return(EXIT_SUCCESS);
 }
 

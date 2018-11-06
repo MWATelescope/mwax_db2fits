@@ -160,9 +160,15 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
-      if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <24))
+      if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <256))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 23.\n", HEADER_COARSE_CHANNEL);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 256.\n", HEADER_COARSE_CHANNEL);
+        return -1;
+      }
+
+      if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel <24))
+      {
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 23.\n", HEADER_CORR_COARSE_CHANNEL);
         return -1;
       }
 
@@ -261,8 +267,8 @@ int dada_dbfits_open(dada_client_t* client)
     int year, month, day, hour, minute, second;
     sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);    
       
-    /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_gpuboxGG_FF.fits */
-    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_gpubox%02d_%02d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+    /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_chCCC_FFF.fits */
+    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%02d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
     
     if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename)) 
     {
@@ -513,12 +519,17 @@ int read_dada_header(dada_client_t *client)
   strncpy(ctx->proj_id, "", PROJ_ID_LEN);            
   ctx->exposure_sec = 0;      
   ctx->coarse_channel = 0;
+  ctx->corr_coarse_channel = 0;
   ctx->secs_per_subobs = 0;
   ctx->unix_time = 0;
   ctx->unix_time_msec = 0;
   ctx->fine_chan_width_hz = 0;
   ctx->nfine_chan = 0;
   ctx->bandwidth_hz = 0;
+  
+  strncpy(ctx->multicast_ip, "", IP_AS_STRING_LEN);            
+  ctx->multicast_port = 0;
+  strncpy(ctx->multicast_src_ip, "", IP_AS_STRING_LEN);            
 
   ctx->nbaselines = 0;                           
   ctx->obs_marker_number = 0;
@@ -589,6 +600,12 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }
 
+  if (ascii_header_get(client->header, HEADER_CORR_COARSE_CHANNEL, "%i", &ctx->corr_coarse_channel) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_CORR_COARSE_CHANNEL);
+    return -1;
+  }
+
   if (ascii_header_get(client->header, HEADER_SECS_PER_SUBOBS, "%i", &ctx->secs_per_subobs) == -1)
   {
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_SECS_PER_SUBOBS);
@@ -624,6 +641,24 @@ int read_dada_header(dada_client_t *client)
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
     return -1;
   }  
+
+  if (ascii_header_get(client->header, HEADER_MC_IP, "%s", &ctx->multicast_ip) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    return -1;
+  }  
+
+  if (ascii_header_get(client->header, HEADER_MC_PORT, "%i", &ctx->multicast_port) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    return -1;
+  }  
+
+  if (ascii_header_get(client->header, HEADER_MC_SRC_IP, "%s", &ctx->multicast_src_ip) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    return -1;
+  }  
   
   // Output what we found in the header
   multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated==1?"yes":"no"));
@@ -642,6 +677,7 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Project Id:               %s\n", ctx->proj_id);  
   multilog(log, LOG_INFO, "Duration:                 %d sec\n", ctx->exposure_sec);
   multilog(log, LOG_INFO, "Coarse channel no.:       %d\n", ctx->coarse_channel);
+  multilog(log, LOG_INFO, "Corr Coarse channel no.:  %d\n", ctx->corr_coarse_channel);  
   multilog(log, LOG_INFO, "Duration of subobs:       %d sec\n", ctx->secs_per_subobs);
   multilog(log, LOG_INFO, "UNIX time of subobs:      %lu\n", ctx->unix_time);
   multilog(log, LOG_INFO, "UNIX milliseconds:        %d msec\n", ctx->unix_time_msec);  

@@ -1,16 +1,24 @@
 from astropy.io import fits
 import argparse
 import struct
-import numpy
-
+import math
+import numpy as np
 
 def process_fits(input_filename, output_cc_filename, output_ac_filename):
-    input_data_tiles = 128
-    pols = 4
-    channels = 32
+    # constants
+    values = 2  # real and imaginary
+    pols = 4  # xx,xy,yx,yy
 
     fits_hdu_list = fits.open(input_filename)
     print("Read in {0} image HDUs...".format(len(fits_hdu_list)-1))
+
+    # Get number of tiles based on baseline count
+    bl = fits_hdu_list[1].header["NAXIS2"]
+    input_data_tiles = int((-1 + math.sqrt(1 + (8 * bl))) / 2)
+
+    # Get fine channel count
+    chan_x_pols_x_vals = fits_hdu_list[1].header["NAXIS1"]
+    channels = int((chan_x_pols_x_vals / pols) / values)
 
     timestep = 0
 
@@ -23,16 +31,22 @@ def process_fits(input_filename, output_cc_filename, output_ac_filename):
                     for j in range(i, input_data_tiles):
                         data = hdu.data[baseline]
 
-                        fmt = 'f' * len(data)
-                        bin = struct.pack(fmt, *data)
+                        #fmt = 'f' * len(data)
+                        #bin = struct.pack(fmt, *data)
+
+                        a_data = np.empty(channels, dtype=float)
+
+                        print("Expecting 0 - {0} step {1}  per baseline!".format(channels*pols*2, pols*2))
+                        exit(0)
 
                         # Write to correct file if it is auto or cross
                         if i == j:
-                            output_ac_file.write(bin)
-                            print("wrote auto baseline {0}".format(baseline))
+                            for c in range(0, channels*pols*2, pols*2):
+                                # Just output every 4th real value (ie with 4 pols, output every 8th value)
+                                np.append(a_data, data[c])
+                            a_data.tofile(output_ac_file)
                         else:
-                            output_cc_file.write(bin)
-                            print("wrote cross baseline {0}".format(baseline))
+                            data.tofile(output_cc_file)
 
                         baseline = baseline + 1
 

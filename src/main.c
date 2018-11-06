@@ -8,9 +8,11 @@
  */
 #include <stdlib.h>
 #include <errno.h>
+#include <linux/limits.h>
 #include <stdio.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "args.h"
 #include "dada_dbfits.h"
@@ -76,6 +78,15 @@ int main(int argc, char* argv[])
   
   g_ctx.log = logger;  
 
+  // Get the current hostname  
+  if (gethostname(g_ctx.hostname, HOST_NAME_LEN + 1) != 0)
+  {
+    multilog(g_ctx.log, LOG_ERR, "main: ERROR: gethostname() failed\n");
+    return EXIT_FAILURE;
+  }
+
+  multilog(g_ctx.log, LOG_INFO, "Hostname: %s\n", g_ctx.hostname);
+
   // print all of the options (this is debug)
   multilog(g_ctx.log, LOG_INFO, "Command line options used:\n");
   multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:    %x\n", globalArgs.input_db_key);
@@ -116,7 +127,7 @@ int main(int argc, char* argv[])
 
   // Pass stuff to the context
   g_ctx.destination_dir = globalArgs.destination_path;
-
+  
   // set up DADA read client
   multilog(g_ctx.log, LOG_INFO, "main(): Creating DADA client...\n", globalArgs.input_db_key);
   client = dada_client_create ();
