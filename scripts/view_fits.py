@@ -14,8 +14,13 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
     fits_hdu_list = fits.open(filename)
 
     # Get number of tiles based on baseline count
-    bl = fits_hdu_list[1].header["NAXIS2"]
-    input_data_tiles = int((-1 + math.sqrt(1+(8*bl)))/2)
+    input_data_tiles = int(fits_hdu_list[0].header["NINPUTS"]/2)
+
+    print("Primary HDU:")
+    print(repr(fits_hdu_list[0].header))
+    print("\n\nFirst image HDU:")
+    print(repr(fits_hdu_list[1].header))
+    print("\n")
 
     # Get fine channel count
     chan_x_pols_x_vals = fits_hdu_list[1].header["NAXIS1"]
@@ -199,7 +204,8 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
 
     plt.ylabel("phase (deg)")
     plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=channels / 10))
+    plt.xticks(np.arange(0, channels, step=20))
+    plt.yticks(np.arange(-180, 180, step=10))
     plt.title(title)
     plt.tight_layout()
     plt.grid(True)
@@ -211,7 +217,7 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--filename", required=True, help="fits filename")
+    parser.add_argument("filename", help="fits filename")
     parser.add_argument("-t1", "--timestep1", required=False, help="start timestep (1 based index)", default=1)
     parser.add_argument("-t2", "--timestep2", required=False, help="end timestep (defaults to last index)", default=-1)
     parser.add_argument("-a1", "--ant1", required=False, help="antenna1 of baseline", default=-1)

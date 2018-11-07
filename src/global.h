@@ -67,8 +67,8 @@ typedef struct dada_db_s {
     int bandwidth_hz;       
     char multicast_ip[IP_AS_STRING_LEN + 1];
     int multicast_port;
-    char multicast_src_ip[IP_AS_STRING_LEN + 1];
-    
+    int fscrunch_factor;
+
     // Not from header- calculated values
     uint64_t nbaselines;                        
     int obs_marker_number;               

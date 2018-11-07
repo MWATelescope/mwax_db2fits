@@ -184,6 +184,12 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
+      if (!(ctx->fscrunch_factor >0))
+      {        
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_FSCRUNCH_FACTOR);
+        return -1;
+      }
+
       if (!(ctx->npol > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_NPOL);
@@ -371,7 +377,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     // Create the HDU in the FITS file
     if (create_fits_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
                           ctx->nbaselines, ctx->nfine_chan, ctx->npol,
-                          ctx->int_time_msec, data, hdu_bytes))    
+                          data, hdu_bytes))    
     {
       // Error!
       multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
@@ -526,11 +532,11 @@ int read_dada_header(dada_client_t *client)
   ctx->fine_chan_width_hz = 0;
   ctx->nfine_chan = 0;
   ctx->bandwidth_hz = 0;
+  ctx->fscrunch_factor = 0;
   
   strncpy(ctx->multicast_ip, "", IP_AS_STRING_LEN);            
   ctx->multicast_port = 0;
-  strncpy(ctx->multicast_src_ip, "", IP_AS_STRING_LEN);            
-
+  
   ctx->nbaselines = 0;                           
   ctx->obs_marker_number = 0;
   
@@ -642,6 +648,12 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }  
 
+  if (ascii_header_get(client->header, HEADER_FSCRUNCH_FACTOR, "%i", &ctx->fscrunch_factor) == -1)
+  {
+    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_FSCRUNCH_FACTOR);
+    return -1;
+  }    
+
   if (ascii_header_get(client->header, HEADER_MC_IP, "%s", &ctx->multicast_ip) == -1)
   {
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
@@ -652,13 +664,7 @@ int read_dada_header(dada_client_t *client)
   {
     multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
     return -1;
-  }  
-
-  if (ascii_header_get(client->header, HEADER_MC_SRC_IP, "%s", &ctx->multicast_src_ip) == -1)
-  {
-    multilog(log, LOG_ERR, "dada_db_open(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
-    return -1;
-  }  
+  }    
   
   // Output what we found in the header
   multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated==1?"yes":"no"));
