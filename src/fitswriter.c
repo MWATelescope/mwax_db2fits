@@ -193,14 +193,14 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
     return -1;
   }
 
-  // MWA_FITS_KEY_NCHANS
+  // MWA_FITS_KEY_NFINECHS
   int nchans = ctx->nfine_chan;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_NCHANS, &(nchans), "Number of fine channels in this coarse channel", &status) )
+  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_NFINECHS, &(nchans), "Number of fine channels in this coarse channel", &status) )
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NCHANS, filename, status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NFINECHS, filename, status, error_text);
     return -1;
   } 
 
