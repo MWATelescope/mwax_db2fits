@@ -146,75 +146,88 @@ int dada_dbfits_open(dada_client_t* client)
         multilog(log, LOG_ERR,"dada_db_open(): Error processing header.\n");
         return -1;
       }      
-                  
+
+      /*                          */
       /* Sanity check what we got */
+      /*                          */
+      /* Is exposure time min of 8 secs and a multiple of 8? */
       if (!(ctx->exposure_sec >= 8 && (ctx->exposure_sec % 8 == 0)))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 seconds.\n", HEADER_EXPOSURE_SECS);
         return -1;
       }
 
+      /* Do have a positive number of inputs (tile * pol) and are they a multiple of 16? */
       if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % 16 == 0)))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0 or a multiple of 16 (as required by xGPU).\n", HEADER_NINPUTS_XGPU);
         return -1;
       }
 
+      /* Coarse channel number needs to be in range 0-255 */
       if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <256))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 256.\n", HEADER_COARSE_CHANNEL);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 255.\n", HEADER_COARSE_CHANNEL);
         return -1;
       }
 
+      /* Correlator coarse channel number must be in range 0-23 */
       if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel <24))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 23.\n", HEADER_CORR_COARSE_CHANNEL);
         return -1;
       }
 
+      /* ProjectID needs to be 5 chars */
       if (!(strlen(ctx->proj_id) == 5))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s must be 5 characters long.\n", HEADER_PROJ_ID);
         return -1;
       }
 
+      /* Bandwidth in Hz needs to be > 0 */
       if (!(ctx->bandwidth_hz > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_BANDWIDTH_HZ);
         return -1;
       }
 
+      /* fsscrunch factor needs to be > 0 */
       if (!(ctx->fscrunch_factor >0))
       {        
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_FSCRUNCH_FACTOR);
         return -1;
       }
 
+      /* polarisations needs to be > 0 */
       if (!(ctx->npol > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_NPOL);
         return -1;
       }
 
+      /* fine channel width must be at least 1hz and at most the bandwidth of a coarse channel */
       if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= ctx->bandwidth_hz))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and %ul kHz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
         return -1;
       }
 
-      // We have NFINE_CHAN and we have FINE_CHAN_WIDTH - do these match?
+      /* We have NFINE_CHAN and we have FINE_CHAN_WIDTH - do these match? */
       if (! ((int)(ctx->bandwidth_hz / ctx->nfine_chan) == ctx->fine_chan_width_hz))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s does not match based on %s and %s.\n", HEADER_FINE_CHAN_WIDTH_HZ, HEADER_BANDWIDTH_HZ, HEADER_NFINE_CHAN);
         return -1;
       }
 
+      /* seconds per sub observation must be > 0 */
       if (!(ctx->secs_per_subobs > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_SECS_PER_SUBOBS);
         return -1;
       }
 
+      /* integration time needs to be at least 200ms and at most msec_per_subobs */
       int msec_per_subobs = ctx->secs_per_subobs * 1000;
       if (!(ctx->int_time_msec >= 200 && ctx->int_time_msec <= msec_per_subobs))
       {
@@ -222,18 +235,21 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }    
 
+      /* transfer size must be > 0*/
       if (!(ctx->transfer_size > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_TRANSFER_SIZE);
         return -1;
       }
 
+      /* bits per valye must be at least 8 and a multiple of a byte (8) */
       if (!(ctx->nbit >= 8 && (ctx->nbit % 8 == 0)))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 bits.\n", HEADER_NBIT);
         return -1;
       } 
 
+      /* unix time msec must be between 0 and 999 */
       if (!(ctx->unix_time_msec >= 0 || ctx->unix_time_msec<1000))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s must be between 0 and 999 milliseconds.\n", HEADER_UNIXTIME_MSEC);
