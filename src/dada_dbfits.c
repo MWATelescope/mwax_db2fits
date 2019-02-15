@@ -202,6 +202,13 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
+      // We have NFINE_CHAN and we have FINE_CHAN_WIDTH - do these match?
+      if (! ((int)(ctx->bandwidth_hz / ctx->nfine_chan) == ctx->fine_chan_width_hz))
+      {
+        multilog(log, LOG_ERR, "dada_db_open(): %s does not match based on %s and %s.\n", HEADER_FINE_CHAN_WIDTH_HZ, HEADER_BANDWIDTH_HZ, HEADER_NFINE_CHAN);
+        return -1;
+      }
+
       if (!(ctx->secs_per_subobs > 0))
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0.\n", HEADER_SECS_PER_SUBOBS);

@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ../mwax-common ../psrdada/src) # -I flags for compiler
-link_directories(${CMAKE_SOURCE_DIR}/lib /home/mwa/linux_64/lib)        # -L flags for linker
+link_directories(${CMAKE_SOURCE_DIR}/lib /home/mwa/linux_64/lib /usr/local/cuda/lib64)        # -L flags for linker
 
 set(PROGSRC src/main.c src/args.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
 
@@ -21,4 +21,4 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 add_executable(mwax_db2fits ${PROGSRC})       # define executable target prog, specify sources
-target_link_libraries(mwax_db2fits pthread cfitsio psrdada m)   # -l flags for linking target
+target_link_libraries(mwax_db2fits pthread cfitsio psrdada cudart m)   # -l flags for linking target
