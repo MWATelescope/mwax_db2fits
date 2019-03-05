@@ -696,11 +696,11 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Offset:                   %d sec\n", ctx->obs_offset);
   multilog(log, LOG_INFO, "Command:                  %s\n", ctx->command);  
   multilog(log, LOG_INFO, "Start time (UTC):         %s\n", ctx->utc_start);
-  multilog(log, LOG_INFO, "Correlator freq res:      %d kHz\n", ctx->fine_chan_width_hz / 1000);
-  multilog(log, LOG_INFO, "Correlator int time:      %0.2f sec\n", (float)ctx->int_time_msec / 1000);        
+  multilog(log, LOG_INFO, "Correlator freq res:      %0.1f kHz\n", (float)ctx->fine_chan_width_hz / 1000.0f);
+  multilog(log, LOG_INFO, "Correlator int time:      %0.2f sec\n", (float)ctx->int_time_msec / 1000.0f);        
   multilog(log, LOG_INFO, "No fine chans per coarse: %d\n", ctx->nfine_chan);
   multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);  
-  multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);
+  multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);  
   multilog(log, LOG_INFO, "Polarisations:            %d\n", ctx->npol);
   multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs_xgpu / 2);  
   multilog(log, LOG_INFO, "Project Id:               %s\n", ctx->proj_id);  
