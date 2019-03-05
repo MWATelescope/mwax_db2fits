@@ -6,6 +6,10 @@ CMakeFiles
 Makefile
 .vscode
 *.fits
+scripts/__pycache__/
 *.metafits
 tmp/
 .idea
+scripts/env
+*.dada
+*.png
