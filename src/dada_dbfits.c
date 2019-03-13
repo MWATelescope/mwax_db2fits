@@ -102,7 +102,14 @@ int dada_dbfits_open(dada_client_t* client)
     // We need a new fits file
     if (ctx->obs_id != this_obs_id)
     {
-      multilog(log, LOG_INFO, "dada_db_open(): New %s detected. Closing %lu, Starting %lu...\n", HEADER_OBS_ID, ctx->obs_id, this_obs_id);
+      if (ctx->fits_ptr != NULL)
+      {
+        multilog(log, LOG_INFO, "dada_db_open(): New %s detected. Closing %lu, Starting %lu...\n", HEADER_OBS_ID, ctx->obs_id, this_obs_id);
+      }
+      else
+      {
+        multilog(log, LOG_INFO, "dada_db_open(): New %s detected. Starting %lu...\n", HEADER_OBS_ID, this_obs_id);
+      }      
     }
     else
     {
@@ -149,39 +156,32 @@ int dada_dbfits_open(dada_client_t* client)
 
       /*                          */
       /* Sanity check what we got */
-      /*                          */
-      /* Is exposure time min of 8 secs and a multiple of 8? */
-      if (!(ctx->exposure_sec >= 8 && (ctx->exposure_sec % 8 == 0)))
-      {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to 8 or a multiple of 8 seconds.\n", HEADER_EXPOSURE_SECS);
-        return -1;
-      }
-
+      /*                          */      
       /* Do have a positive number of inputs (tile * pol) and are they a multiple of 16? */
-      if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % 16 == 0)))
+      if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % XGPU_INPUT_STRIDE == 0)))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0 or a multiple of 16 (as required by xGPU).\n", HEADER_NINPUTS_XGPU);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than 0 or a multiple of %d (as required by xGPU).\n", HEADER_NINPUTS_XGPU, XGPU_INPUT_STRIDE);
         return -1;
       }
 
       /* Coarse channel number needs to be in range 0-255 */
-      if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <256))
+      if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <= COARSE_CHANNEL_MAX))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 255.\n", HEADER_COARSE_CHANNEL);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and %d.\n", HEADER_COARSE_CHANNEL, COARSE_CHANNEL_MAX);
         return -1;
       }
 
       /* Correlator coarse channel number must be in range 0-23 */
-      if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel <24))
+      if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel < CORR_COARSE_CHANNEL_MAX))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and 23.\n", HEADER_CORR_COARSE_CHANNEL);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 0 and %d.\n", HEADER_CORR_COARSE_CHANNEL, CORR_COARSE_CHANNEL_MAX);
         return -1;
       }
 
-      /* ProjectID needs to be 5 chars */
-      if (!(strlen(ctx->proj_id) == 5))
+      /* ProjectID needs to be less than 255 chars */
+      if (!(strlen(ctx->proj_id) <= PROJ_ID_LEN))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s must be 5 characters long.\n", HEADER_PROJ_ID);
+        multilog(log, LOG_ERR, "dada_db_open(): %s must be %d characters long.\n", HEADER_PROJ_ID, PROJ_ID_LEN);
         return -1;
       }
 
@@ -209,7 +209,7 @@ int dada_dbfits_open(dada_client_t* client)
       /* fine channel width must be at least 1hz and at most the bandwidth of a coarse channel */
       if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= ctx->bandwidth_hz))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and %ul kHz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between 1 Hz and %ul Hz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
         return -1;
       }
 
@@ -227,11 +227,18 @@ int dada_dbfits_open(dada_client_t* client)
         return -1;
       }
 
+      /* Is exposure time min of 8 secs and a multiple of 8? */
+      if (!(ctx->exposure_sec >= ctx->secs_per_subobs && (ctx->exposure_sec % ctx->secs_per_subobs == 0)))
+      {
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not greater than or equal to %d or a multiple of %d seconds.\n", HEADER_EXPOSURE_SECS, ctx->secs_per_subobs, ctx->secs_per_subobs);
+        return -1;
+      }
+
       /* integration time needs to be at least 200ms and at most msec_per_subobs */
       int msec_per_subobs = ctx->secs_per_subobs * 1000;
-      if (!(ctx->int_time_msec >= 200 && ctx->int_time_msec <= msec_per_subobs))
+      if (!(ctx->int_time_msec >= INT_TIME_MSEC_MIN && ctx->int_time_msec <= msec_per_subobs))
       {
-        multilog(log, LOG_ERR, "dada_db_open(): %s is not between than 0.2 and %d seconds.\n", HEADER_INT_TIME_MSEC, msec_per_subobs);
+        multilog(log, LOG_ERR, "dada_db_open(): %s is not between than %d ms and %d ms.\n", HEADER_INT_TIME_MSEC, msec_per_subobs*1000, INT_TIME_MSEC_MIN);
         return -1;
       }    
 
@@ -259,15 +266,35 @@ int dada_dbfits_open(dada_client_t* client)
       // Calculate baselines
       ctx->nbaselines = (ctx->ninputs_xgpu*(ctx->ninputs_xgpu+2))/8;
       
+      //
       // Check transfer size read in from header matches what we expect from the other params      
-      int bytes_per_complex = (ctx->nbit / 8) * 2; // Should be 4 bytes per float (32 bits) x2 for r,i
-      ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
-      ctx->expected_transfer_size_of_one_fine_channel = ((ctx->npol * ctx->npol) * bytes_per_complex) * ctx->nbaselines;
-      ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
-      ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration; //TODO put me back in:  + ctx->expected_transfer_size_of_one_fine_channel;
-      ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
-      ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs; //TODO put me back in- this is for a quick test only  + (ctx->expected_transfer_size_of_one_fine_channel * ctx->no_of_integrations_per_subobs);
+      //
 
+      // Should be 4 bytes per float (32 bits) x2 for r,i
+      int bytes_per_complex = (ctx->nbit / 8) * 2; 
+
+      // Integrations per sub obs
+      ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
+
+      // One fine channel = pol*pol*bytes_per_complex*baselines
+      ctx->expected_transfer_size_of_one_fine_channel = ((ctx->npol * ctx->npol) * bytes_per_complex) * ctx->nbaselines;
+
+      // weights (in one integration) = one fine channel (i.e. pol * pol * bytes per complex * baselines)
+      ctx->expected_transfer_size_of_weights = ctx->expected_transfer_size_of_one_fine_channel;
+
+      // one fine chan * number of fine channels
+      ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
+
+      // one integration + weights
+      ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_weights;
+
+      // one integration * number of integrations
+      ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
+
+      // one sub obs + (weights * number of integrations per sub obs)
+      ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs + (ctx->expected_transfer_size_of_weights * ctx->no_of_integrations_per_subobs);
+
+      // The number of bytes should never exceed transfer size
       if (ctx->expected_transfer_size_of_subobs_plus_weights > ctx->transfer_size)
       {
         multilog(log, LOG_ERR, "dada_db_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs_plus_weights);
@@ -395,22 +422,33 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     
     // Remove the weights from the byte count
     // Remove any left over space from the byte count too
-    uint64_t hdu_bytes = ctx->expected_transfer_size_of_integration;
+    uint64_t visibility_hdu_bytes = ctx->expected_transfer_size_of_integration;
+    uint64_t weights_hdu_bytes = ctx->expected_transfer_size_of_weights;
 
-    // Create the HDU in the FITS file
-    if (create_fits_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
-                          ctx->nbaselines, ctx->nfine_chan, ctx->npol,
-                          data, hdu_bytes))    
+    // Create the visibility HDU in the FITS file
+    if (create_fits_visibilities_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
+                                        ctx->nbaselines, ctx->nfine_chan, ctx->npol, data, visibility_hdu_bytes))    
     {
       // Error!
-      multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new image HDU.\n");
+      multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new visibility image HDU.\n");
       return -1;
     }
     else
     {      
-      wrote = to_write;
-      written += wrote;
-      ctx->obs_marker_number += 1;
+      // Now write the weights HDU
+      if (create_fits_weights_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
+                                     ctx->nbaselines, ctx->npol, data + visibility_hdu_bytes, weights_hdu_bytes))    
+      {
+        // Error!
+        multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new weights image HDU.\n");
+        return -1;
+      }
+      else
+      {            
+        wrote = to_write;
+        written += wrote;
+        ctx->obs_marker_number += 1;
+      }
     }  
 
     ctx->block_number += 1;

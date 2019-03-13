@@ -21,12 +21,9 @@
 #define MWA_FITS_VALUE_NAXIS 0
 #define MWA_FITS_KEY_TIME "TIME"
 #define MWA_FITS_KEY_MILLITIM "MILLITIM"
-#define MWA_FITS_KEY_EXPOSURE "EXPOSURE"
 #define MWA_FITS_KEY_INTTIME "INTTIME"
-#define MWA_FITS_KEY_NSCANS "NSCANS"
 #define MWA_FITS_KEY_NINPUTS "NINPUTS"
 #define MWA_FITS_KEY_FINECHAN "FINECHAN"
-#define MWA_FITS_KEY_NAV_FREQ "NAV_FREQ"
 #define MWA_FITS_KEY_NFINECHS "NFINECHS"
 #define MWA_FITS_KEY_MARKER "MARKER"
 #define MWA_FITS_KEY_PROJID "PROJID"
@@ -48,5 +45,7 @@
 int open_fits(dada_client_t *client, fitsfile **fptr, const char* filename);
 int create_fits(dada_client_t *client, fitsfile **fptr, const char* filename);
 int close_fits(dada_client_t *client, fitsfile **fptr);
-int create_fits_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, int baselines, 
-                       int fine_channels, int polarisations, float *buffer, uint64_t bytes);
+int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, 
+                                    int marker, int baselines, int fine_channels, int polarisations, float *buffer, uint64_t bytes);
+int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, 
+                               int marker, int baselines, int polarisations, float *buffer, uint64_t bytes);
