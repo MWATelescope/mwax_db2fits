@@ -271,16 +271,17 @@ int dada_dbfits_open(dada_client_t* client)
       //
 
       // Should be 4 bytes per float (32 bits) x2 for r,i
-      int bytes_per_complex = (ctx->nbit / 8) * 2; 
+      int bytes_per_float = ctx->nbit / 8;
+      int bytes_per_complex = bytes_per_float * 2; 
 
       // Integrations per sub obs
       ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
 
       // One fine channel = pol*pol*bytes_per_complex*baselines
-      ctx->expected_transfer_size_of_one_fine_channel = ((ctx->npol * ctx->npol) * bytes_per_complex) * ctx->nbaselines;
+      ctx->expected_transfer_size_of_one_fine_channel = ctx->npol * ctx->npol * bytes_per_complex * ctx->nbaselines;
 
-      // weights (in one integration) = one fine channel (i.e. pol * pol * bytes per complex * baselines)
-      ctx->expected_transfer_size_of_weights = ctx->expected_transfer_size_of_one_fine_channel;
+      // weights (in one integration) = (pol * pol * bytes per weight * baselines)
+      ctx->expected_transfer_size_of_weights = ctx->npol * ctx->npol * bytes_per_float * ctx->nbaselines;
 
       // one fine chan * number of fine channels
       ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;

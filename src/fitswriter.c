@@ -484,14 +484,14 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
                                int baselines, int polarisations, float *buffer, uint64_t bytes)
 {  
   // NAXIS1 is rows, NAXIS2 is cols. We want NAXIS1 < NAXIS2 for efficiency
-  // NAXIS1 = NPOL * NPOL * 2 (real/imag)
+  // NAXIS1 = NPOL * NPOL 
   // NAXIS2 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
   //
   //           Weights
   // Baseline  xx      xy      yx      yy
-  //    1-1    r,i     r,i     r,i     r,i
-  //    1-2    r,i     r,i     r,i     r,i
-  //    1-3
+  //    1-1    w       w       w       w
+  //    1-2    w       w       w       w
+  //    1-3    w       w       w       w
   //    ...  
   //
   assert(client != 0);
@@ -503,7 +503,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   int status = 0;
   int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes
   long naxis = 2;
-  uint64_t axis1_rows = polarisations * polarisations * 2;   //  we x2 as we store real and imaginary;
+  uint64_t axis1_rows = polarisations * polarisations;
   uint64_t axis2_cols = baselines;
 
   long naxes[2] = { axis1_rows, axis2_cols };

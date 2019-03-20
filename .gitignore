@@ -13,3 +13,4 @@ tmp/
 scripts/env
 *.dada
 *.png
+*.code-workspace
