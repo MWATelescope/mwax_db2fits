@@ -6,7 +6,7 @@ import math
 
 
 # freq,baseline,pol
-def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles):
+def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, ppdplot, gridplot, phaseplot, maxtiles, weights):
     # constants
     values = 2 # real and imaginary
     pols = 4   # xx,xy,yx,yy
@@ -38,7 +38,7 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
     max_tiles = int(maxtiles)
 
     if ts2 == -1:
-        ts2 = len(fits_hdu_list) - 1
+        ts2 = int((len(fits_hdu_list) - 1) / 2)
 
     if max_tiles == -1:
         max_tiles = input_data_tiles
@@ -91,9 +91,17 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
 
     # create a list of the hdus we want
     hdu_list = []
+    hdu_list_weights = []
 
-    for h in range(ts1, ts2 + 1):
+    # hdu 0 is primary
+    # hdu's then alternate between data and weghts. e.g. d,w,d,w, etc
+    for h in range((ts1*2)-1, ((ts2+1)*2)-1, 2):
+        print(f"Adding HDU {h} to data HDUs")
         hdu_list.append(fits_hdu_list[h])
+
+    for h_weights in range(ts1*2, (ts2+1)*2, 2):
+        print(f"Adding HDU {h_weights} to weights HDUs")
+        hdu_list_weights.append(fits_hdu_list[h_weights])
 
     # print a csv header if we're not plotting
     if not plot:
@@ -132,11 +140,28 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
                             plot_phase_data_x[chan] = phase_x
                             plot_phase_data_y[chan] = phase_y
 
-                            if not plot:
+                            if not plot and not weights:
                                 print(
                                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}".format(
                                         time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
                                         power))
+
+                baseline = baseline + 1
+
+    for hdu in hdu_list_weights:
+        time = hdu.header["MARKER"] + 1
+        baseline = 0
+        for i in range(0, input_data_tiles):
+            for j in range(i, input_data_tiles):
+                if (i < max_tiles and j < max_tiles) and ((i == j and autosonly == True) or (
+                        autosonly == False and ((ant1 == -1 or ant1 == i) and (ant2 == -1 or ant2 == j)))):
+                    w_xx = hdu.data[baseline][0]
+                    w_xy = hdu.data[baseline][1]
+                    w_yx = hdu.data[baseline][2]
+                    w_yy = hdu.data[baseline][3]
+
+                    if weights:
+                        print(f"{time} {baseline} {i} v {j}: {w_xx}, {w_xy}, {w_yx}, {w_yy}")
 
                 baseline = baseline + 1
 
@@ -227,7 +252,8 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument("-mt", "--maxtiles", required=False,
                         help="Maximum tiles to use when displaying data or plots. Default is all", default=-1)
+    parser.add_argument("-w", "--weights", required=False, help="Dump the weights", action='store_true')
     args = vars(parser.parse_args())
 
     peek_fits(args["filename"], args["timestep1"], args["timestep2"], args["ant1"], args["ant2"], args["channel"],
-              args["autosonly"], args["ppdplot"], args["gridplot"], args["phaseplot"], args["maxtiles"])
+              args["autosonly"], args["ppdplot"], args["gridplot"], args["phaseplot"], args["maxtiles"], args["weights"])

@@ -438,7 +438,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     {      
       // Now write the weights HDU
       if (create_fits_weights_imghdu(client, ctx->fits_ptr, ctx->unix_time, ctx->unix_time_msec, ctx->obs_marker_number, 
-                                     ctx->nbaselines, ctx->npol, data + visibility_hdu_bytes, weights_hdu_bytes))    
+                                     ctx->nbaselines, ctx->npol, data + (visibility_hdu_bytes/4), weights_hdu_bytes))    
       {
         // Error!
         multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing into new weights image HDU.\n");
