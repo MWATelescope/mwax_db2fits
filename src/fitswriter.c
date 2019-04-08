@@ -398,7 +398,25 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
 
   long naxes[2] = { axis1_rows, axis2_cols };
 
-  multilog(log, LOG_DEBUG, "Creating new visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+  // Apply compression if requested
+  if ( (ctx->compression_mode & COMPRESSION_MODE_CORRELATOR_VISIBILITIES) == COMPRESSION_MODE_CORRELATOR_VISIBILITIES )
+  {
+    int comptype = GZIP_2;
+
+    if (fits_set_compression_type(fptr, comptype, &status))
+    {
+      char error_text[30]="";
+      fits_get_errstatus(status, error_text);
+      multilog(log, LOG_ERR, "Error setting compression type of visibilities ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
+      return EXIT_FAILURE;
+    }
+
+    multilog(log, LOG_DEBUG, "Creating new compressed visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+  }
+  else
+  {
+    multilog(log, LOG_DEBUG, "Creating new visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+  }
 
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
@@ -506,10 +524,28 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   uint64_t axis1_rows = polarisations * polarisations;
   uint64_t axis2_cols = baselines;
 
-  long naxes[2] = { axis1_rows, axis2_cols };
+  long naxes[2] = { axis1_rows, axis2_cols };  
 
-  multilog(log, LOG_DEBUG, "Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+  // Apply compression if requested
+  if ( (ctx->compression_mode & COMPRESSION_MODE_CORRELATOR_WEIGHTS) == COMPRESSION_MODE_CORRELATOR_WEIGHTS)
+  {
+    int comptype = GZIP_2;
 
+    if (fits_set_compression_type(fptr, comptype, &status))
+    {
+      char error_text[30]="";
+      fits_get_errstatus(status, error_text);
+      multilog(log, LOG_ERR, "Error setting compression type of weights ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
+      return EXIT_FAILURE;
+    }
+
+    multilog(log, LOG_DEBUG, "Creating new compressed weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);  
+  }
+  else
+  {
+    multilog(log, LOG_DEBUG, "Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);  
+  }
+  
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {

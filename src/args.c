@@ -8,8 +8,9 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "multilog.h"
 #include "args.h"
+#include "global.h"
+#include "multilog.h"
 
 /**
  * 
@@ -26,6 +27,7 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
     globalArgs->destination_path = NULL;
     globalArgs->health_ip = NULL;
     globalArgs->health_port = 0;
+    globalArgs->compression_mode = 0;
 
     static const char *optString = "k:m:d:i:p:?";
 
@@ -36,6 +38,7 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
         { "destination", required_argument, NULL, 'd' },
         { "health-ip", required_argument, NULL, 'i' },
         { "health-port", required_argument, NULL, 'p' },
+        { "compression-mode", required_argument, NULL, 'c' },
 	    { "help", no_argument, NULL, '?' },
 	    { NULL, no_argument, NULL, 0 }
 	};
@@ -68,6 +71,10 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
                 globalArgs->health_port = atoi(optarg);
                 break;
             
+            case 'c':
+                globalArgs->compression_mode = atoi(optarg);
+                break;
+
             case '?':
                 print_usage();
                 return EXIT_FAILURE;
@@ -111,6 +118,13 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
         exit(1);
     }
 
+    if (globalArgs->compression_mode < 0 || 
+        globalArgs->compression_mode > (COMPRESSION_MODE_CORRELATOR_WEIGHTS + COMPRESSION_MODE_CORRELATOR_VISIBILITIES) ) {
+        fprintf(stderr, "Error: compression mode (-c | --compression_mode) is not valid.\n");
+        print_usage();
+        exit(1);
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -125,10 +139,12 @@ void print_usage()
     printf("visibility data from the MWA Crosse Correlator.\n");
     printf("It will then write out a fits file to be picked up by the \n");
     printf("archiver process.\n\n");
-	printf("  -k --key=KEY              Hexadecimal shared memory key\n");    
-    printf("  -d --destination=PATH     Destination path for gpubox files\n");
-    printf("  -m --metafits=PATH        Metafits directory path\n");
-    printf("  -i --health-ip=IP         Health UDP destination ip address\n");
-    printf("  -p --health-port=PORT     Health UDP destination port\n");
-	printf("  -? --help                 This help text\n");
+	printf("  -k --key=KEY                Hexadecimal shared memory key\n");    
+    printf("  -d --destination=PATH       Destination path for gpubox files\n");
+    printf("  -m --metafits=PATH          Metafits directory path\n");
+    printf("  -i --health-ip=IP           Health UDP destination ip address\n");
+    printf("  -p --health-port=PORT       Health UDP destination port\n");
+    printf("  -c --compression-mode=MODE  Compresson mode:\n");
+    printf("                              Bitwise Flags: (0=none,1=correlator weights,2=correlator visibilities)\n");
+	printf("  -? --help                   This help text\n");
 }

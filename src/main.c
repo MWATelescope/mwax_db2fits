@@ -94,6 +94,7 @@ int main(int argc, char* argv[])
   multilog(g_ctx.log, LOG_INFO, "* Destination path:     %s\n", globalArgs.destination_path);
   multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:        %s\n", globalArgs.health_ip);
   multilog(g_ctx.log, LOG_INFO, "* Health UDP Port:      %d\n", globalArgs.health_port);
+  multilog(g_ctx.log, LOG_INFO, "* Compression mode:     %d (%s)\n", globalArgs.compression_mode, compression_mode_name(globalArgs.compression_mode));
 
   // This tells us if we need to quit
   int quit = 0;
@@ -127,6 +128,7 @@ int main(int argc, char* argv[])
 
   // Pass stuff to the context
   g_ctx.destination_dir = globalArgs.destination_path;
+  g_ctx.compression_mode = globalArgs.compression_mode;
   
   // set up DADA read client
   multilog(g_ctx.log, LOG_INFO, "main(): Creating DADA client...\n", globalArgs.input_db_key);
@@ -144,7 +146,7 @@ int main(int argc, char* argv[])
   // Set some useful params based on our ringbuffer config  
   g_ctx.block_size = ipcbuf_get_bufsz((ipcbuf_t *)(client->data_block));
   multilog(g_ctx.log, LOG_INFO, "main(): Block size (one integration) is %lu bytes.\n", g_ctx.block_size);
-
+  
   // Launch Health thread  
   pthread_t health_thread;
 

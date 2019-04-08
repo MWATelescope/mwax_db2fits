@@ -7,15 +7,14 @@
  */
 #pragma once
 
+#define HAVE_HWLOC      // This is used by the psrdada library to set if we have the hwloc library or not. This lib is used to abstract NUMA / architecture.
+
 #include <fitsio.h>
 #include <linux/limits.h>
 #include <pthread.h>
 #include <stdint.h>
-
 #include "fitswriter.h"
 #include "multilog.h"
-
-#define HAVE_HWLOC      // This is used by the psrdada library to set if we have the hwloc library or not. This lib is used to abstract NUMA / architecture.
 
 #define MWAX_COMMAND_LEN        32    // Size of the command in PSRDADA header. E.g. "CAPTURE","QUIT","IDLE"
 #define UTC_START_LEN           20    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
@@ -26,6 +25,11 @@
 #define COARSE_CHANNEL_MAX      255   // Highest possible coarse channel number
 #define CORR_COARSE_CHANNEL_MAX 23    // Highest possible correlator coarse channel number
 #define INT_TIME_MSEC_MIN       200   // Minimum integration time (milliseconds)
+
+// Compression mode consts
+#define COMPRESSION_MODE_NONE 0
+#define COMPRESSION_MODE_CORRELATOR_WEIGHTS 1
+#define COMPRESSION_MODE_CORRELATOR_VISIBILITIES 2
 
 typedef struct dada_db_s {
     // PSRDADA stuff
@@ -40,6 +44,7 @@ typedef struct dada_db_s {
 
     // Common
     char hostname[HOST_NAME_LEN+1];
+    int compression_mode;
 
     // FITS info
     char* destination_dir;
@@ -85,7 +90,11 @@ typedef struct dada_db_s {
     uint64_t expected_transfer_size_of_subobs_plus_weights;   
 } dada_db_s;
 
+// Methods for the Quit mutex
 int initialise_quit();
 int set_quit(int value);
 int get_quit();
 int destroy_quit();
+
+// Method for compression mode
+const char* compression_mode_name(int compression_mode);

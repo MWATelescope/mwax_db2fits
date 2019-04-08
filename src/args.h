@@ -17,6 +17,7 @@ typedef struct
     char* metafits_path;
     char* health_ip;
     int health_port;
+    int compression_mode;
 } globalArgs_s;
 
 void print_usage();
