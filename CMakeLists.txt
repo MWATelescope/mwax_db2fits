@@ -10,8 +10,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/include ../mwax-common ../psrdada/src) # -I flags for compiler
-link_directories(${CMAKE_SOURCE_DIR}/lib /home/mwa/linux_64/lib /usr/local/cuda/lib64)        # -L flags for linker
+include_directories(${CMAKE_SOURCE_DIR}/include ../mwax-common ../psrdada/src /home/mwa/cfitsio) # -I flags for compiler
+link_directories(${CMAKE_SOURCE_DIR}/lib /home/mwa/linux_64/lib /usr/local/cuda/lib64 /home/mwa/cfitsio)        # -L flags for linker
 
 set(PROGSRC src/main.c src/args.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
 

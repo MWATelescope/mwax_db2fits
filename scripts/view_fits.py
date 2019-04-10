@@ -18,8 +18,10 @@ def peek_fits(filename, timestep1, timestep2, ant1, ant2, channel, autosonly, pp
 
     print("Primary HDU:")
     print(repr(fits_hdu_list[0].header))
-    print("\n\nFirst image HDU:")
+    print("\n\nFirst image/visibilituy HDU:")
     print(repr(fits_hdu_list[1].header))
+    print("\n\nFirst image/weights HDU:")
+    print(repr(fits_hdu_list[2].header))
     print("\n")
 
     # Get fine channel count
