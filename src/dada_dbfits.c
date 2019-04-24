@@ -5,6 +5,8 @@
  * @brief This is the code that drives the ring buffers
  *
  */
+#include <stdio.h>
+#include <errno.h>
 #include "dada_dbfits.h"
 #include "mwax_global_defs.h" // From mwax-common
 #include "utils.h"
@@ -453,14 +455,110 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
         ctx->obs_marker_number += 1;
       }
     }  
-
+    
     ctx->block_number += 1;
+
+    // Check to see if we are the last expected block
+    if (ctx->block_number == ctx->no_of_integrations_per_subobs)
+    {
+      // Write out stats
+      if (dump_autocorrelation_stats(client, ptr_data) != EXIT_SUCCESS)
+      {
+        // Error!
+        multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing autocorrelation stats dump.\n");
+        return -1;
+      }      
+    }
+
     ctx->bytes_written += written;
 
     return bytes;
   }  
   else
     return 0;
+}
+
+/**
+ * 
+ *  @brief This will dump out this integrations autocorrelations to a file
+ *  @param[in] client A pointer to the dada_client_t object.
+ *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
+ *  @param[in] bytes The number of bytes that the visibilities take up
+ *  @returns SUCCESS or EXIT_FAILURE
+ */
+int dump_autocorrelation_stats(dada_client_t *client, void *ptr_data)
+{
+  assert (client != 0);
+  dada_db_s* ctx = (dada_db_s*) client->context;
+  multilog_t * log = (multilog_t *) ctx->log;
+
+  int baseline = 0;
+  int offset = 0;
+  int offset_chan = 0;
+  int offset_xx_r = 0;
+  int offset_yy_r = 6;
+  float *ptr = 0;
+  int ntiles = ctx->ninputs_xgpu / 2;
+
+  FILE * fp;
+  
+  // Generate filename
+  snprintf(ctx->stats_filename, PATH_MAX, "%s/%ld_autos.txt", ctx->stats_dir, ctx->subobs_id);
+
+  fp = fopen(ctx->stats_filename, "w");
+
+  if (fp == NULL)
+  {
+    multilog(log, LOG_ERR, "dump_autocorrelation_stats(): Error openning autocorrelation stats dump for writing %s: %s\n", ctx->stats_filename, strerror(errno));
+    return EXIT_FAILURE;
+  }
+
+  for (int i = 0; i < ntiles; i++)
+  {
+      for (int j = i; j < ntiles; j++)
+      {
+        if (i == j)
+        {
+          fprintf(fp, "Baseline: %d x %d: ", i, j);
+          
+          // Autocorrelations
+          offset = ctx->nfine_chan * baseline * (ctx->npol*ctx->npol) * 2;
+
+          // Determine where the channel starts
+          ptr = ptr_data + offset;
+
+          // Iterate all the fine channels for this baseline
+          for (int ch = 0; ch < ctx->nfine_chan; ch++) 
+          {        
+            offset_chan = offset + (ch * (ctx->npol*ctx->npol) * 2);
+            
+            if (ch == 0)    
+            {
+              // Only dump xx_r and yy_r
+              fprintf(fp, "(ch%d)xxr=%.5f,yy_r=%.5f", ch, ptr[offset_chan+offset_xx_r], ptr[offset_chan+offset_yy_r]);
+              
+              // Now print comma or eol
+              if (ch < (ctx->nfine_chan - 1))
+              {
+                fprintf(fp, "|");
+              }
+              else
+              {
+                fprintf(fp, "\n");
+              }
+            }            
+          }
+        }
+
+        baseline = baseline + 1;
+      }    
+  }
+
+  // Close file
+  if (fp != NULL)
+    fclose(fp);
+
+  return EXIT_SUCCESS;
 }
 
 /**

@@ -26,11 +26,6 @@
 #define CORR_COARSE_CHANNEL_MAX 23    // Highest possible correlator coarse channel number
 #define INT_TIME_MSEC_MIN       200   // Minimum integration time (milliseconds)
 
-// Compression mode consts
-#define COMPRESSION_MODE_NONE 0
-#define COMPRESSION_MODE_CORRELATOR_WEIGHTS 1
-#define COMPRESSION_MODE_CORRELATOR_VISIBILITIES 2
-
 typedef struct dada_db_s {
     // PSRDADA stuff
     uint64_t header_size;     // size of the DADA header blocks
@@ -44,7 +39,14 @@ typedef struct dada_db_s {
 
     // Common
     char hostname[HOST_NAME_LEN+1];
-    int compression_mode;
+    
+    // Stats
+    char* stats_dir;
+    char stats_filename[PATH_MAX];
+
+    // Metafits
+    char* metafits_dir;
+    char metafits_filename[PATH_MAX];
 
     // FITS info
     char* destination_dir;

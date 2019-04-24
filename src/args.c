@@ -27,18 +27,18 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
     globalArgs->destination_path = NULL;
     globalArgs->health_ip = NULL;
     globalArgs->health_port = 0;
-    globalArgs->compression_mode = 0;
+    globalArgs->stats_path = NULL;
 
     static const char *optString = "k:m:d:i:p:?";
 
 	static const struct option longOpts[] =
 	{
 		{ "key", required_argument, NULL, 'k' },        
-        { "metafits", required_argument, NULL, 'm' },
-        { "destination", required_argument, NULL, 'd' },
+        { "metafits-path", required_argument, NULL, 'm' },
+        { "destination-path", required_argument, NULL, 'd' },
         { "health-ip", required_argument, NULL, 'i' },
         { "health-port", required_argument, NULL, 'p' },
-        { "compression-mode", required_argument, NULL, 'c' },
+        { "stats-path", required_argument, NULL, 's' },
 	    { "help", no_argument, NULL, '?' },
 	    { NULL, no_argument, NULL, 0 }
 	};
@@ -71,8 +71,8 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
                 globalArgs->health_port = atoi(optarg);
                 break;
             
-            case 'c':
-                globalArgs->compression_mode = atoi(optarg);
+            case 's':
+                globalArgs->stats_path = optarg;
                 break;
 
             case '?':
@@ -95,13 +95,13 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
     }
 
     if (!globalArgs->metafits_path) {
-        fprintf(stderr, "Error: metafits path (-m | --metafits) is mandatory.\n");
+        fprintf(stderr, "Error: metafits path (-m | --metafits-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
     if (!globalArgs->destination_path) {
-        fprintf(stderr, "Error: destination path (-d | --destination) is mandatory.\n");
+        fprintf(stderr, "Error: destination path (-d | --destination-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
@@ -118,9 +118,8 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
         exit(1);
     }
 
-    if (globalArgs->compression_mode < 0 || 
-        globalArgs->compression_mode > (COMPRESSION_MODE_CORRELATOR_WEIGHTS + COMPRESSION_MODE_CORRELATOR_VISIBILITIES) ) {
-        fprintf(stderr, "Error: compression mode (-c | --compression_mode) is not valid.\n");
+    if (!globalArgs->stats_path) {  
+        fprintf(stderr, "Error: stats path (-s | --stats-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
@@ -140,11 +139,10 @@ void print_usage()
     printf("It will then write out a fits file to be picked up by the \n");
     printf("archiver process.\n\n");
 	printf("  -k --key=KEY                Hexadecimal shared memory key\n");    
-    printf("  -d --destination=PATH       Destination path for gpubox files\n");
-    printf("  -m --metafits=PATH          Metafits directory path\n");
+    printf("  -d --destination-path=PATH  Destination path for gpubox files\n");
+    printf("  -m --metafits-path=PATH     Metafits directory path\n");
     printf("  -i --health-ip=IP           Health UDP destination ip address\n");
     printf("  -p --health-port=PORT       Health UDP destination port\n");
-    printf("  -c --compression-mode=MODE  Compresson mode:\n");
-    printf("                              Bitwise Flags: (0=none,1=correlator weights,2=correlator visibilities)\n");
+    printf("  -s --stats-path=PATH        Statistics directory path\n");    
 	printf("  -? --help                   This help text\n");
 }
