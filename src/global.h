@@ -42,7 +42,7 @@ typedef struct dada_db_s {
     
     // Stats
     char* stats_dir;
-    char stats_filename[PATH_MAX];
+    char stats_filename[PATH_MAX-4];
 
     // Metafits
     char* metafits_dir;

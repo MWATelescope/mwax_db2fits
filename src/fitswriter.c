@@ -116,6 +116,24 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
     return -1;
   }
 
+  // Data format comment1
+  if ( fits_write_comment(*fptr, "Visibilities: 1 integration per HDU: [baseline][finechan][pol][r,i]", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing visibility format comment to file %s. Error: %d -- %s\n", filename, status, error_text);
+    return -1;
+  }
+
+  // Data format comment2
+  if ( fits_write_comment(*fptr, "Weights: 1 integration per HDU: [baseline][pol][weight]", &status) )
+  {
+    char error_text[30]="";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing visibility format comment to file %s. Error: %d -- %s\n", filename, status, error_text);
+    return -1;
+  }
+
   // MARKER
   int marker = ctx->obs_marker_number;
 
@@ -269,7 +287,7 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
   assert(ctx->log != 0);
   multilog_t *log = (multilog_t *) ctx->log;
 
-  multilog(log, LOG_DEBUG, "close_fits() called.\n");
+  multilog(log, LOG_DEBUG, "close_fits(): Starting.\n");
 
   int status = 0;
 
@@ -279,7 +297,7 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
     {
       char error_text[30]="";
       fits_get_errstatus(status, error_text);
-      multilog(log, LOG_ERR, "Error closing fits file. Error: %d -- %s\n", status, error_text);
+      multilog(log, LOG_ERR, "close_fits(): Error closing fits file. Error: %d -- %s\n", status, error_text);
       return EXIT_FAILURE;
     }
     else
@@ -289,7 +307,7 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
   }
   else
   {
-    multilog(log, LOG_WARNING, "Fits file is already closed.\n");
+    multilog(log, LOG_WARNING, "close_fits(): Fits file is already closed.\n");
   }
 
   return(EXIT_SUCCESS);
@@ -317,7 +335,7 @@ int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
+    multilog(log, LOG_ERR, "open_fits(): Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -398,14 +416,14 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
 
   long naxes[2] = { axis1_rows, axis2_cols };
   
-  multilog(log, LOG_DEBUG, "Creating new visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+  multilog(log, LOG_DEBUG, "create_fits_visibilities_imghdu(): Creating new visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
 
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error creating visibility ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error creating visibility ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -416,18 +434,18 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing key %s into visibility HDU. Error: %d -- %s\n", key_time, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing key %s into visibility HDU. Error: %d -- %s\n", key_time, status, error_text);
     return EXIT_FAILURE;
   }
 
-  // MILLITIME - provides millisecond component of TIME
+  // MILLITIME - provides millisecond component of TIoffset_ME
   char key_millitim[FLEN_KEYWORD] = "MILLITIM";
 
   if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME",&status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing %s into visibility HDU. Error: %d -- %s\n", key_millitim, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing %s into visibility HDU. Error: %d -- %s\n", key_millitim, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -438,7 +456,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing key %s into visibility HDU. Error: %d -- %s\n", key_marker, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing key %s into visibility HDU. Error: %d -- %s\n", key_marker, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -449,7 +467,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   u_int64_t expected_bytes = (axis1_rows * axis2_cols * (abs(bitpix) / 8));
   if (bytes != expected_bytes)
   {
-    multilog(log, LOG_ERR, "Visibility HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Visibility HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
     return EXIT_FAILURE;
   }
 
@@ -458,7 +476,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing data into visibility HDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing data into visibility HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -508,14 +526,14 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
 
   long naxes[2] = { axis1_rows, axis2_cols };  
   
-  multilog(log, LOG_DEBUG, "Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);  
+  multilog(log, LOG_DEBUG, "create_fits_weights_imghdu(): Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);  
   
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error creating weights ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error creating weights ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -526,7 +544,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing key %s into weights HDU. Error: %d -- %s\n", key_time, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_time, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -537,7 +555,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing key %s into weights HDU. Error: %d -- %s\n", key_millitim, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_millitim, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -548,7 +566,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing key %s into weights HDU. Error: %d -- %s\n", key_marker, status, error_text);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_marker, status, error_text);
     return EXIT_FAILURE;
   }
 
@@ -559,7 +577,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   u_int64_t expected_bytes = (axis1_rows * axis2_cols * (abs(bitpix) / 8));
   if (bytes != expected_bytes)
   {
-    multilog(log, LOG_ERR, "Weights HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Weights HDU bytes (%lu bytes) does not match calculated size from header parameters (%lu bytes).\n", bytes, expected_bytes);
     return EXIT_FAILURE;
   }
 
@@ -568,7 +586,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   {
     char error_text[30]="";
     fits_get_errstatus(status, error_text);
-    multilog(log, LOG_ERR, "Error writing data into weights HDU in fits file. Error: %d -- %s\n", status, error_text);
+    multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing data into weights HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
   }
 
