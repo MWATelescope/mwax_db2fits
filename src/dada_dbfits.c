@@ -452,7 +452,16 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
       {            
         wrote = to_write;
         written += wrote;
-        ctx->obs_marker_number += 1;
+        ctx->obs_marker_number += 1; // Increment the marker number
+        
+        // Increment the UNIX time marker by: int_time_msec
+        ctx->unix_time_msec += ctx->int_time_msec; 
+
+        while (ctx->unix_time_msec >= 1000)
+        {
+          ctx->unix_time += 1;
+          ctx->unix_time_msec -= 1000;
+        }
       }
     }  
     
