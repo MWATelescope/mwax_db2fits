@@ -190,7 +190,12 @@ def do_ppd_plot(title, channels, plot_ppd_data):
     plt.plot(plot_ppd_data)
     plt.ylabel("dB")
     plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=16))
+
+    nstep = int(channels / 20)
+    if nstep < 1:
+        nstep = 1
+
+    plt.xticks(np.arange(0, channels, step=nstep))
     plt.title(title)
     #plt.tight_layout()
     plt.grid(True)
@@ -207,11 +212,35 @@ def do_grid_plot(title, tiles, plot_grid_data):
 
     plt.ylabel("ant2")
     plt.xlabel("ant1")
-    plt.xticks(np.arange(0, tiles, step=32))
-    plt.yticks(np.arange(0, tiles, step=32))
+
+    nstep = int(tiles / 16)
+    if nstep < 1:
+        nstep = 1
+
+    #plt.xticks(np.arange(0.5, tiles, step=nstep), np.arange(0, tiles, step=nstep))
+    #plt.yticks(np.arange(0.5, tiles, step=nstep), np.arange(0, tiles, step=nstep))
+
+    ax = plt.gca()
+    tickpos = np.arange(0, tiles) + 0.5   # eg [0.5, 1.5, 2.5, ...]
+    tickstrings = [str(x) for x in np.arange(0, tiles)]
+    gridvals = np.arange(0, tiles)
+
+    ax.set_xticks(gridvals, minor=True)   # define the minor tick coords
+    ax.set_yticks(gridvals, minor=True)
+
+    ax.set_xticks(tickpos, minor=False)   # define the major tick coords
+    ax.set_yticks(tickpos, minor=False)
+
+    ax.set_xticklabels(tickstrings, minor=True)  # strings to display there
+    ax.set_yticklabels(tickstrings, minor=True)
+    ax.set_xticklabels([], minor=False)  # strings to display there
+    ax.set_yticklabels([], minor=False)
+
+    ax.grid(b=False, which='minor', axis='both')  # Display grid at the minor tickmarks
+    ax.grid(b=True, which='major', axis='both')
+
     plt.title(title)
     #plt.tight_layout()
-    plt.grid(True)
     plt.imshow(plot_grid_data, cmap="inferno", interpolation="nearest")
     plt.savefig("grid_plot.png", bbox_inches='tight')
     print("saved grid_plot.png")
@@ -229,10 +258,16 @@ def do_phase_plot(title, channels, plot_phase_data_x, plot_phase_data_y):
 
     plt.ylabel("phase (deg)")
     plt.xlabel("fine channel")
-    plt.xticks(np.arange(0, channels, step=20))
-    plt.yticks(np.arange(-180, 180, step=10))
+    
+    nstep = int(channels / 20)
+    if nstep < 1:
+        nstep = 1 
+
+    plt.xticks(np.arange(0, channels, step=nstep))
+    plt.yticks(np.arange(-180, 180, step=20))
+
     plt.title(title)
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.grid(True)
     plt.savefig("phase_plot.png", bbox_inches='tight')
     print("saved phase_plot.png")

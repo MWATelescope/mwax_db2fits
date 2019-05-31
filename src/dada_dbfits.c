@@ -468,7 +468,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     ctx->block_number += 1;
 
     // Check to see if we are the last expected block
-    if (ctx->block_number == ctx->no_of_integrations_per_subobs)
+    if (ctx->block_number % ctx->no_of_integrations_per_subobs == 0)
     {
       // Write out stats
       if (dump_autocorrelation_stats(client, ptr_data) != EXIT_SUCCESS)
