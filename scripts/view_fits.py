@@ -187,6 +187,13 @@ def do_ppd_plot(title, channels, plot_ppd_data):
         plot_ppd_data[c] = math.log10(plot_ppd_data[c] + 1) * 10
         print(c, plot_ppd_data[c])
 
+    # Get min dB value
+    min_db = np.array(plot_ppd_data).min()
+
+    # Step down the dB by the min so we have a 0 base
+    for c in range(0, channels):
+        plot_ppd_data[c] = plot_ppd_data[c] - min_db
+
     plt.plot(plot_ppd_data)
     plt.ylabel("dB")
     plt.xlabel("fine channel")

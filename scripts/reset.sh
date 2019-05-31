@@ -30,6 +30,6 @@ rm *.fits
 
 echo "...instantiating ring buffers..."
 dada_db -d -k 0x5678
-dada_db -b 134742016 -n 40 -k 0x5678  
+dada_db -b 338297856 -n 40 -k 0x5678  
 
 echo ring buffers created
