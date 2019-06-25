@@ -116,6 +116,9 @@ int dada_dbfits_open(dada_client_t* client)
     else
     {
       multilog(log, LOG_INFO, "dada_dbfits_open(): Exceeded max size %lu of a fits file. Closing %s, Starting new file...\n", FITS_SIZE_CUTOFF_BYTES, ctx->fits_filename);
+
+      // Reset bytes_written
+      //ctx->bytes_written = 0;
     }
 
     // Close existing fits file (if we have one)    
