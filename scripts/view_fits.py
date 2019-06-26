@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
+dpi = 100
+
 
 class ViewFITSArgs:
     def __init__(self, passed_args):
@@ -277,7 +279,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
     # Get min dB value
     min_db = np.array(plot_ppd_data).min()
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all")
+    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for t in range(0, program_args.time_step_count):
@@ -307,7 +309,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
 
     # Save the final plot to disk
     plt.savefig("ppd_plot.png", bbox_inches='tight')
-    print("saved ppd_plot.png")
+    print("saved ppd_plot.png", dpi=dpi)
     plt.show()
 
 
@@ -331,10 +333,20 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     # Apply min_db but only to values > 1
     plot_grid_data = np.where(plot_grid_data > 1, plot_grid_data - min_db, plot_grid_data)
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all")
+    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     n_step = math.ceil(plots / 1.25)
+
+    if n_step % 2 != 0:
+        n_step = n_step + 1
+
+    if n_step % 4 != 0:
+        n_step = n_step - 2
+
+    if n_step < 1:
+        n_step = 1
+
     if n_step > 16:
         n_step = 16
 
@@ -372,7 +384,7 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
             plot_row = plot_row + 1
             plot_col = 0
 
-    plt.savefig("grid_plot.png", bbox_inches='tight')
+    plt.savefig("grid_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved grid_plot.png")
     plt.show()
 
@@ -386,7 +398,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     plot_col = 0
     baseline = 0
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all")
+    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for i in range(0, program_args.tile_count):
@@ -425,7 +437,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
             baseline = baseline + 1
 
     # Save final plot to disk
-    plt.savefig("phase_plot.png", bbox_inches='tight')
+    plt.savefig("phase_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved phase_plot.png")
     plt.show()
 

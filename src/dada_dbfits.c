@@ -855,13 +855,13 @@ int read_dada_header(dada_client_t *client)
 
   if (ascii_header_get(client->header, HEADER_MC_IP, "%s", &ctx->multicast_ip) == -1)
   {
-    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_MC_IP);
     return -1;
   }  
 
   if (ascii_header_get(client->header, HEADER_MC_PORT, "%i", &ctx->multicast_port) == -1)
   {
-    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_BANDWIDTH_HZ);
+    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_MC_PORT);
     return -1;
   }    
   
@@ -887,6 +887,8 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "UNIX time of subobs:      %lu\n", ctx->unix_time);
   multilog(log, LOG_INFO, "UNIX milliseconds:        %d msec\n", ctx->unix_time_msec);  
   multilog(log, LOG_INFO, "Size of subobservation:   %lu bytes\n", ctx->transfer_size);
+  multilog(log, LOG_INFO, "Multicast IP:             %s\n", ctx->multicast_ip);    
+  multilog(log, LOG_INFO, "Multicast Port:           %d\n", ctx->multicast_port);    
 
   return EXIT_SUCCESS;
 }
