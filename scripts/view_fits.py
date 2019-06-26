@@ -138,7 +138,7 @@ def peek_fits(program_args: ViewFITSArgs):
     plot_ppd_data.fill(0)
 
     # Grid plot
-    plot_grid_data = np.empty(shape=(program_args.tile_count, program_args.tile_count))
+    plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
     plot_grid_data.fill(0)
 
     # Phase plot
@@ -170,6 +170,9 @@ def peek_fits(program_args: ViewFITSArgs):
     for hdu in time_step_list:
         time = hdu.header["MARKER"] + 1
         print(f"Processing timestep: {time} (time index: {time_index})...")
+
+        data = np.array(hdu.data, dtype=float)
+
         baseline = 0
         selected_baseline = 0
 
@@ -186,17 +189,17 @@ def peek_fits(program_args: ViewFITSArgs):
                     for chan in range(program_args.channel1, program_args.channel2 + 1):
                         index = chan * (program_args.pols * program_args.values)
 
-                        xx_r = hdu.data[baseline][index]
-                        xx_i = hdu.data[baseline][index + 1]
+                        xx_r = data[baseline][index]
+                        xx_i = data[baseline][index + 1]
 
-                        xy_r = hdu.data[baseline][index + 2]
-                        xy_i = hdu.data[baseline][index + 3]
+                        xy_r = data[baseline][index + 2]
+                        xy_i = data[baseline][index + 3]
 
-                        yx_r = hdu.data[baseline][index + 4]
-                        yx_i = hdu.data[baseline][index + 5]
+                        yx_r = data[baseline][index + 4]
+                        yx_i = data[baseline][index + 5]
 
-                        yy_r = hdu.data[baseline][index + 6]
-                        yy_i = hdu.data[baseline][index + 7]
+                        yy_r = data[baseline][index + 6]
+                        yy_i = data[baseline][index + 7]
 
                         power = (xx_r * xx_r) + (yy_r * yy_r) + (xx_i * xx_i) + (yy_i * yy_i)
 
@@ -204,7 +207,7 @@ def peek_fits(program_args: ViewFITSArgs):
                             plot_ppd_data[time_index][chan] = plot_ppd_data[time_index][chan] + power
 
                         elif program_args.grid_plot:
-                            plot_grid_data[j][i] = plot_grid_data[j][i] + power
+                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power
 
                         elif program_args.phase_plot:
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
@@ -289,11 +292,11 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
         plot.plot(plot_ppd_data[t])
 
         # Set labels
-        plot.set_ylabel("dB")
-        plot.set_xlabel("fine channel")
+        plot.set_ylabel("dB", size=6)
+        plot.set_xlabel("fine channel", size=6)
 
         # Set plot title
-        plot.set_title(f"t={t + program_args.time_step1}")
+        plot.set_title(f"t={t + program_args.time_step1}, size=6")
 
         # Increment so we know which plot we are on
         if plot_col < plot_cols - 1:
@@ -309,27 +312,65 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
 
 
 def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
-    for t1 in range(0, program_args.tile_count):
-        for t2 in range(t1, program_args.tile_count):
-            plot_grid_data[t2][t1] = math.log10(plot_grid_data[t2][t1] + 1) * 10
-            print(program_args.tile1 + t1, program_args.tile1 + t2, plot_grid_data[t2][t1])
+    # Work out layout of plots
+    plots = program_args.time_step_count
+    plot_rows = math.floor(math.sqrt(plots))
+    plot_cols = math.ceil(plots / plot_rows)
+    plot_row = 0
+    plot_col = 0
 
-    fig, ax = plt.subplots()
+    for time_index in range(0, program_args.time_step_count):
+        for t1 in range(0, program_args.tile_count):
+            for t2 in range(t1, program_args.tile_count):
+                plot_grid_data[time_index][t2][t1] = math.log10(plot_grid_data[time_index][t2][t1] + 1) * 10
 
-    im = plt.imshow(plot_grid_data, cmap="inferno", interpolation="None")
+    # Get min dB value
+    np_array_nonzero = plot_grid_data[plot_grid_data > 1]
+    min_db = np_array_nonzero.min()
 
-    plt.ylabel("ant2")
-    plt.xlabel("ant1")
+    # Apply min_db but only to values > 1
+    plot_grid_data = np.where(plot_grid_data > 1, plot_grid_data - min_db, plot_grid_data)
 
-    ax.set_xticks(np.arange(program_args.tile_count))
-    ax.set_yticks(np.arange(program_args.tile_count))
+    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all")
+    fig.suptitle(title)
 
-    ax.set_xticklabels(np.arange(program_args.tile1, program_args.tile2+1))
-    ax.set_yticklabels(np.arange(program_args.tile1, program_args.tile2+1))
+    n_step = math.ceil(plots / 1.25)
+    if n_step > 16:
+        n_step = 16
 
-    plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+    for time_index in range(0, program_args.time_step_count):
+        for t1 in range(0, program_args.tile_count):
+            for t2 in range(t1, program_args.tile_count):
+                print(time_index, program_args.tile1 + t1, program_args.tile1 + t2, plot_grid_data[time_index][t2][t1])
 
-    ax.set_title(title)
+        # Get the current plot
+        plot = ax[plot_row][plot_col]
+
+        plot.imshow(plot_grid_data[time_index], cmap="inferno", interpolation="None")
+
+        plot.set_title(f"t={time_index+program_args.time_step1}", size=6)
+        plot.set_xticks(np.arange(program_args.tile_count, step=n_step))
+        plot.set_yticks(np.arange(program_args.tile_count, step=n_step))
+        plot.set_xticklabels(np.arange(program_args.tile1, program_args.tile2 + 1, step=n_step))
+        plot.set_yticklabels(np.arange(program_args.tile1, program_args.tile2 + 1, step=n_step))
+
+        # Set labels
+        # Only do y label for first col
+        if plot_col == 0:
+            plot.set_ylabel("ant2", size=6)
+
+        # Only do x label for final row
+        if plot_row == plot_rows - 1:
+            plot.set_xlabel("ant1", size=6)
+
+        plt.setp(plot.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+
+        # Increment so we know which plot we are on
+        if plot_col < plot_cols - 1:
+            plot_col = plot_col + 1
+        else:
+            plot_row = plot_row + 1
+            plot_col = 0
 
     plt.savefig("grid_plot.png", bbox_inches='tight')
     print("saved grid_plot.png")
@@ -362,11 +403,11 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
             # Set labels
             # Only do y label for first col
             if plot_col == 0:
-                plot.set_ylabel("phase (deg)")
+                plot.set_ylabel("phase (deg)", size=6)
 
             # Only do x label for final row
             if plot_row == plot_rows - 1:
-                plot.set_xlabel("fine channel")
+                plot.set_xlabel("fine channel", size=6)
 
             # Ensure Y axis goes from -180 to 180
             plot.set_ylim([-180, 180])

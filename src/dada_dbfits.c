@@ -98,12 +98,17 @@ int dada_dbfits_open(dada_client_t* client)
     return -1;
   }
 
+  int new_obs_id = 0;
+  
   // Check this obs_id against our 'in progress' obsid  
   if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= ctx->fits_file_size_limit)
-  {
+  {    
     // We need a new fits file
     if (ctx->obs_id != this_obs_id)
     {
+      // Set this flag so we know whats going on later in this function
+      new_obs_id = 1;
+
       if (ctx->fits_ptr != NULL)
       {
         multilog(log, LOG_INFO, "dada_dbfits_open(): New %s detected. Closing %lu, Starting %lu...\n", HEADER_OBS_ID, ctx->obs_id, this_obs_id);
@@ -341,9 +346,10 @@ int dada_dbfits_open(dada_client_t* client)
     // Reset file size
     ctx->fits_file_size = 0; 
   }
-  else
-  {
-    /* This is a continuation of an existing observation */
+  
+  /* This is a continuation of an existing observation */
+  if (new_obs_id == 0)
+  {    
     multilog(log, LOG_INFO, "dada_dbfits_open(): continuing %lu...\n", ctx->obs_id);
 
     /* Get the duration */   
@@ -463,6 +469,9 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
         wrote = to_write;
         written += wrote;
         ctx->fits_file_size = ctx->fits_file_size + visibility_hdu_bytes + weights_hdu_bytes;
+
+        //multilog(log, LOG_INFO, "dada_dbfits_io(): Current fits file size: %ld / %ld\n", ctx->fits_file_size, ctx->fits_file_size_limit);
+
         ctx->obs_marker_number += 1; // Increment the marker number
         
         // Increment the UNIX time marker by: int_time_msec
