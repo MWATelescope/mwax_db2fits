@@ -298,7 +298,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
         plot.set_xlabel("fine channel", size=6)
 
         # Set plot title
-        plot.set_title(f"t={t + program_args.time_step1}, size=6")
+        plot.set_title(f"t={t + program_args.time_step1}", size=6)
 
         # Increment so we know which plot we are on
         if plot_col < plot_cols - 1:
@@ -308,8 +308,8 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
             plot_col = 0
 
     # Save the final plot to disk
-    plt.savefig("ppd_plot.png", bbox_inches='tight')
-    print("saved ppd_plot.png", dpi=dpi)
+    plt.savefig("ppd_plot.png", bbox_inches='tight', dpi=dpi)
+    print("saved ppd_plot.png")
     plt.show()
 
 
