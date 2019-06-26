@@ -53,6 +53,7 @@ typedef struct dada_db_s {
     fitsfile *fits_ptr;
     char fits_filename[PATH_MAX];
     int fits_file_number;
+    long fits_file_size;
     
     // Observation info
     int populated;

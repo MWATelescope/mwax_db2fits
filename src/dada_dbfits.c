@@ -99,7 +99,7 @@ int dada_dbfits_open(dada_client_t* client)
   }
 
   // Check this obs_id against our 'in progress' obsid  
-  if (ctx->obs_id != this_obs_id || ctx->bytes_written >= FITS_SIZE_CUTOFF_BYTES)
+  if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= FITS_SIZE_CUTOFF_BYTES)
   {
     // We need a new fits file
     if (ctx->obs_id != this_obs_id)
@@ -115,10 +115,7 @@ int dada_dbfits_open(dada_client_t* client)
     }
     else
     {
-      multilog(log, LOG_INFO, "dada_dbfits_open(): Exceeded max size %lu of a fits file. Closing %s, Starting new file...\n", FITS_SIZE_CUTOFF_BYTES, ctx->fits_filename);
-
-      // Reset bytes_written
-      //ctx->bytes_written = 0;
+      multilog(log, LOG_INFO, "dada_dbfits_open(): Current file size (%lu bytes) exceeds max size (%lu bytes) of a fits file. Closing %s, Starting new file...\n", ctx->fits_file_size, FITS_SIZE_CUTOFF_BYTES, ctx->fits_filename);      
     }
 
     // Close existing fits file (if we have one)    
@@ -129,6 +126,9 @@ int dada_dbfits_open(dada_client_t* client)
         multilog(log, LOG_ERR,"dada_dbfits_open(): Error closing fits file.\n");
         return -1;
       }
+
+      // Reset current file size
+      ctx->fits_file_size = 0;
     }
     
     if (ctx->obs_id != this_obs_id)
@@ -315,7 +315,7 @@ int dada_dbfits_open(dada_client_t* client)
       }
       
       // Reset the filenumber
-      ctx->fits_file_number = 0;      
+      ctx->fits_file_number = 0;           
     }
     else
     {
@@ -337,13 +337,16 @@ int dada_dbfits_open(dada_client_t* client)
       multilog(log, LOG_ERR,"dada_dbfits_open(): Error creating new fits file.\n");
       return -1;
     }
+
+    // Reset file size
+    ctx->fits_file_size = 0; 
   }
   else
   {
     /* This is a continuation of an existing observation */
     multilog(log, LOG_INFO, "dada_dbfits_open(): continuing %lu...\n", ctx->obs_id);
 
-    /* Update the duration */   
+    /* Get the duration */   
     int new_duration_sec = 0;
     if (ascii_header_get(client->header, HEADER_EXPOSURE_SECS, "%i", &new_duration_sec) == -1)
     {
@@ -357,7 +360,7 @@ int dada_dbfits_open(dada_client_t* client)
       multilog(log, LOG_INFO, "dada_dbfits_open(): %s has changed from %d sec to %d sec.\n", HEADER_EXPOSURE_SECS, ctx->exposure_sec, new_duration_sec);
     }
     
-    /* Update the offset */
+    /* Get the offset */
     int new_obs_offset_sec = 0;
     if (ascii_header_get(client->header, HEADER_OBS_OFFSET, "%i", &new_obs_offset_sec) == -1)
     {
@@ -385,6 +388,10 @@ int dada_dbfits_open(dada_client_t* client)
     {
       multilog(log, LOG_INFO, "dada_dbfits_open(): %s incremented from %d sec to %d sec.\n", HEADER_OBS_OFFSET, ctx->exposure_sec, new_duration_sec);
     }
+
+    /* update new values */
+    ctx->exposure_sec = new_duration_sec;
+    ctx->obs_offset = new_obs_offset_sec;
   }
     
   multilog(log, LOG_INFO, "dada_dbfits_open(): completed\n");
