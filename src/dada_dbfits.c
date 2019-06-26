@@ -99,7 +99,7 @@ int dada_dbfits_open(dada_client_t* client)
   }
 
   // Check this obs_id against our 'in progress' obsid  
-  if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= FITS_SIZE_CUTOFF_BYTES)
+  if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= ctx->fits_file_size_limit)
   {
     // We need a new fits file
     if (ctx->obs_id != this_obs_id)
@@ -115,7 +115,7 @@ int dada_dbfits_open(dada_client_t* client)
     }
     else
     {
-      multilog(log, LOG_INFO, "dada_dbfits_open(): Current file size (%lu bytes) exceeds max size (%lu bytes) of a fits file. Closing %s, Starting new file...\n", ctx->fits_file_size, FITS_SIZE_CUTOFF_BYTES, ctx->fits_filename);      
+      multilog(log, LOG_INFO, "dada_dbfits_open(): Current file size (%lu bytes) exceeds max size (%lu bytes) of a fits file. Closing %s, Starting new file...\n", ctx->fits_file_size, ctx->fits_file_size_limit, ctx->fits_filename);      
     }
 
     // Close existing fits file (if we have one)    
@@ -462,6 +462,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
       {            
         wrote = to_write;
         written += wrote;
+        ctx->fits_file_size = ctx->fits_file_size + visibility_hdu_bytes + weights_hdu_bytes;
         ctx->obs_marker_number += 1; // Increment the marker number
         
         // Increment the UNIX time marker by: int_time_msec

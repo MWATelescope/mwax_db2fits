@@ -16,15 +16,16 @@
 #include "fitswriter.h"
 #include "multilog.h"
 
-#define MWAX_COMMAND_LEN        32    // Size of the command in PSRDADA header. E.g. "CAPTURE","QUIT","IDLE"
-#define UTC_START_LEN           20    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
-#define PROJ_ID_LEN             255   // Size of the Project ID used by the MWA metadata database
-#define HOST_NAME_LEN           64    // Length of hostname
-#define IP_AS_STRING_LEN        15    // xxx.xxx.xxx.xxx   
-#define XGPU_INPUT_STRIDE       16    // xGPU only allows inputs to be a multiple of 16
-#define COARSE_CHANNEL_MAX      255   // Highest possible coarse channel number
-#define CORR_COARSE_CHANNEL_MAX 23    // Highest possible correlator coarse channel number
-#define INT_TIME_MSEC_MIN       200   // Minimum integration time (milliseconds)
+#define DEFAULT_FILE_SIZE_LIMIT 5368709120l // Default file size limit- 5GB
+#define MWAX_COMMAND_LEN        32          // Size of the command in PSRDADA header. E.g. "CAPTURE","QUIT","IDLE"
+#define UTC_START_LEN           20          // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
+#define PROJ_ID_LEN             255         // Size of the Project ID used by the MWA metadata database
+#define HOST_NAME_LEN           64          // Length of hostname
+#define IP_AS_STRING_LEN        15          // xxx.xxx.xxx.xxx   
+#define XGPU_INPUT_STRIDE       16          // xGPU only allows inputs to be a multiple of 16
+#define COARSE_CHANNEL_MAX      255         // Highest possible coarse channel number
+#define CORR_COARSE_CHANNEL_MAX 23          // Highest possible correlator coarse channel number
+#define INT_TIME_MSEC_MIN       200         // Minimum integration time (milliseconds)
 
 typedef struct dada_db_s {
     // PSRDADA stuff
@@ -54,6 +55,7 @@ typedef struct dada_db_s {
     char fits_filename[PATH_MAX];
     int fits_file_number;
     long fits_file_size;
+    long fits_file_size_limit;
     
     // Observation info
     int populated;

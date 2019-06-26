@@ -95,6 +95,7 @@ int main(int argc, char* argv[])
   multilog(g_ctx.log, LOG_INFO, "* Stats path:           %s\n", globalArgs.stats_path);
   multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:        %s\n", globalArgs.health_ip);
   multilog(g_ctx.log, LOG_INFO, "* Health UDP Port:      %d\n", globalArgs.health_port);
+  multilog(g_ctx.log, LOG_INFO, "* FITS size limit:      %ld bytes\n", globalArgs.file_size_limit);
   
   // This tells us if we need to quit
   int quit = 0;
@@ -130,6 +131,7 @@ int main(int argc, char* argv[])
   g_ctx.destination_dir = globalArgs.destination_path;
   g_ctx.metafits_dir = globalArgs.metafits_path;
   g_ctx.stats_dir = globalArgs.stats_path;
+  g_ctx.fits_file_size_limit = globalArgs.file_size_limit;
   
   // set up DADA read client
   multilog(g_ctx.log, LOG_INFO, "main(): Creating DADA client...\n", globalArgs.input_db_key);

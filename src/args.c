@@ -28,8 +28,9 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
     globalArgs->health_ip = NULL;
     globalArgs->health_port = 0;
     globalArgs->stats_path = NULL;
+    globalArgs->file_size_limit = -1;
 
-    static const char *optString = "k:m:d:i:p:?";
+    static const char *optString = "k:m:d:i:p:l:?";
 
 	static const struct option longOpts[] =
 	{
@@ -39,6 +40,7 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
         { "health-ip", required_argument, NULL, 'i' },
         { "health-port", required_argument, NULL, 'p' },
         { "stats-path", required_argument, NULL, 's' },
+        { "file-size-limit", optional_argument, NULL, 'l' },
 	    { "help", no_argument, NULL, '?' },
 	    { NULL, no_argument, NULL, 0 }
 	};
@@ -75,6 +77,10 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
                 globalArgs->stats_path = optarg;
                 break;
 
+            case 'l':
+                globalArgs->file_size_limit = atol(optarg);                
+                break;
+
             case '?':
                 print_usage();
                 return EXIT_FAILURE;
@@ -88,41 +94,57 @@ int process_args(int argc, char* argv[], globalArgs_s* globalArgs)
 	}
 
     // Check that mandatory parameters are passed
-    if (!globalArgs->input_db_key) {
+    if (!globalArgs->input_db_key) 
+    {
         fprintf(stderr, "Error: input shared memory key (-k | --key) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
-    if (!globalArgs->metafits_path) {
+    if (!globalArgs->metafits_path) 
+    {
         fprintf(stderr, "Error: metafits path (-m | --metafits-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
-    if (!globalArgs->destination_path) {
+    if (!globalArgs->destination_path) 
+    {
         fprintf(stderr, "Error: destination path (-d | --destination-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
-    if (!globalArgs->health_ip) {
+    if (!globalArgs->health_ip) 
+    {
         fprintf(stderr, "Error: health ip (-i | --health-ip) is mandatory.\n");
         print_usage();
         exit(1);
     }
    
-    if (!globalArgs->health_port) {
+    if (!globalArgs->health_port) 
+    {
         fprintf(stderr, "Error: health port (-p | --health-port) is mandatory.\n");
         print_usage();
         exit(1);
     }
 
-    if (!globalArgs->stats_path) {  
+    if (!globalArgs->stats_path) 
+    {  
         fprintf(stderr, "Error: stats path (-s | --stats-path) is mandatory.\n");
         print_usage();
         exit(1);
     }
+
+    // If nothing passed, use default. If 0 passed, use LONG_MAX    
+    if (globalArgs->file_size_limit < 0) 
+    {
+        globalArgs->file_size_limit = DEFAULT_FILE_SIZE_LIMIT;
+    }
+    else if (globalArgs->file_size_limit == 0) 
+    {
+        globalArgs->file_size_limit = LONG_MAX;
+    }    
 
     return EXIT_SUCCESS;
 }
@@ -144,5 +166,6 @@ void print_usage()
     printf("  -i --health-ip=IP           Health UDP destination ip address\n");
     printf("  -p --health-port=PORT       Health UDP destination port\n");
     printf("  -s --stats-path=PATH        Statistics directory path\n");    
+    printf("  -l --file-size-limit=BYTES  FITS file size limit before splitting into a new file. Default=%ld bytes. 0=no splitting\n", DEFAULT_FILE_SIZE_LIMIT);
 	printf("  -? --help                   This help text\n");
 }

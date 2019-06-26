@@ -17,7 +17,8 @@ typedef struct
     char* metafits_path;
     char* health_ip;
     char* stats_path;
-    int health_port;    
+    int health_port;  
+    long file_size_limit;  
 } globalArgs_s;
 
 void print_usage();

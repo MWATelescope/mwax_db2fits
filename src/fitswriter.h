@@ -10,9 +10,6 @@
 #include "fitsio.h"
 #include "dada_client.h"
 
-// Split fits files into this many bytes- currently 5GB
-#define FITS_SIZE_CUTOFF_BYTES 5368709120
-
 // Keys and some hard coded values for the 1st HDU of the fits file produced
 #define MWA_FITS_KEY_SIMPLE "SIMPLE"
 #define MWA_FITS_VALUE_SIMPLE TRUE
