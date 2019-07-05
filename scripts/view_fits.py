@@ -125,15 +125,6 @@ class ViewFITSArgs:
 
 # freq,baseline,pol
 def peek_fits(program_args: ViewFITSArgs):
-    # Dump the Primary, first and second HDUs
-    print("Primary HDU:")
-    print(repr(program_args.fits_hdu_list[0].header))
-    print("\n\nFirst image/visibilituy HDU:")
-    print(repr(program_args.fits_hdu_list[1].header))
-    print("\n\nFirst image/weights HDU:")
-    print(repr(program_args.fits_hdu_list[2].header))
-    print("\n")
-
     # initialise the bins for out plot
     # array will be [timestep][channel]
     plot_ppd_data = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
@@ -162,6 +153,14 @@ def peek_fits(program_args: ViewFITSArgs):
     for h_weights in range(program_args.time_step1 * 2, (program_args.time_step2 + 1) * 2, 2):
         print(f"Adding HDU {h_weights} to weights HDUs")
         weight_list.append(program_args.fits_hdu_list[h_weights])
+
+    # print the header of each HDU, including the primary
+    print("Primary HDU:\n")
+    print(repr(program_args.fits_hdu_list[0].header))
+
+    for h in range(1, len(program_args.fits_hdu_list)):
+        print(f"HDU {h}:\n")
+        print(f"{repr(program_args.fits_hdu_list[h].header)}\n")
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
