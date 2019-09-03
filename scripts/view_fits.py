@@ -343,8 +343,10 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     if n_step % 4 != 0:
         n_step = n_step - 2
 
-    if n_step < 1:
-        n_step = 1
+    if n_step <= 1:
+        n_step = 2
+    else:
+        n_step = n_step * 2 
 
     if n_step > 16:
         n_step = 16
