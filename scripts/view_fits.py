@@ -111,11 +111,6 @@ class ViewFITSArgs:
         self.time_step_count = self.time_step2 - self.time_step1 + 1
         self.baseline_count = int((self.tile_count * (self.tile_count + 1)) / 2)
 
-        # Deeper checks
-        if self.phase_plot and self.time_step_count != 1:
-            print("phaseplot can only be run for 1 time step at a time")
-            exit(-1)
-
         # print params
         self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} tile={self.tile1}-{self.tile2} " \
                             f"ch={self.channel1}-{self.channel2} autosonly?={self.autos_only} " \
@@ -135,9 +130,9 @@ def peek_fits(program_args: ViewFITSArgs):
     plot_grid_data.fill(0)
 
     # Phase plot
-    plot_phase_data_x = np.empty(shape=(program_args.baseline_count, program_args.channel_count))
+    plot_phase_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
     plot_phase_data_x.fill(0)
-    plot_phase_data_y = np.empty(shape=(program_args.baseline_count, program_args.channel_count))
+    plot_phase_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
     plot_phase_data_y.fill(0)
 
     # create a list of the hdus we want
@@ -157,10 +152,10 @@ def peek_fits(program_args: ViewFITSArgs):
     # print the header of each HDU, including the primary
     print("Primary HDU:\n")
     print(repr(program_args.fits_hdu_list[0].header))
-
-    for h in range(1, len(program_args.fits_hdu_list)):
-        print(f"HDU {h}:\n")
-        print(f"{repr(program_args.fits_hdu_list[h].header)}\n")
+    
+    # Debug only
+    for h in time_step_list:
+        print(f"{repr(h.header)}\n")
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
@@ -214,8 +209,8 @@ def peek_fits(program_args: ViewFITSArgs):
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
                             phase_y = math.degrees(math.atan2(yy_i, yy_r))
 
-                            plot_phase_data_x[selected_baseline][chan] = phase_x
-                            plot_phase_data_y[selected_baseline][chan] = phase_y
+                            plot_phase_data_x[time_index][selected_baseline][chan] = phase_x
+                            plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
 
                         else:
                             if not program_args.weights:
@@ -410,8 +405,9 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
             plot = ax[plot_row][plot_col]
 
             # Do plots
-            plot.plot(channel_list, plot_phase_data_x[baseline], '.', markersize=1)
-            plot.plot(channel_list, plot_phase_data_y[baseline], '.', markersize=1)
+            for t in range(0, program_args.time_step_count):
+                plot.plot(channel_list, plot_phase_data_x[t][baseline], 'o', markersize=1, color='orange')
+                plot.plot(channel_list, plot_phase_data_y[t][baseline], 'o', markersize=1, color='blue')
 
             # Set labels
             # Only do y label for first col
