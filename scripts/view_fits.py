@@ -36,6 +36,7 @@ class ViewFITSArgs:
         self.pols = 4       # xx,xy,yx,yy
 
         # Read fits file
+        print(f"Opening fits file {self.filename}...")
         self.fits_hdu_list = fits.open(self.filename)
 
         # Get number of tiles based on the number of signal chains
@@ -120,6 +121,8 @@ class ViewFITSArgs:
 
 # freq,baseline,pol
 def peek_fits(program_args: ViewFITSArgs):
+    print("Initialising data structures...")
+
     # initialise the bins for out plot
     # array will be [timestep][channel]
     plot_ppd_data = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
@@ -165,7 +168,7 @@ def peek_fits(program_args: ViewFITSArgs):
 
     for hdu in time_step_list:
         time = hdu.header["MARKER"] + 1
-        print(f"Processing timestep: {time} (time index: {time_index})...")
+        print(f"Processing timestep: {time} (time index: {time_index})...", end="")
 
         data = np.array(hdu.data, dtype=float)
 
@@ -224,7 +227,9 @@ def peek_fits(program_args: ViewFITSArgs):
                 baseline = baseline + 1
 
         time_index = time_index + 1
+        print(" done!")
 
+    print("Processing weights...", end="")
     for hdu in weight_list:
         time = hdu.header["MARKER"] + 1
         baseline = 0
@@ -243,6 +248,7 @@ def peek_fits(program_args: ViewFITSArgs):
                 baseline = baseline + 1
 
     # clean up
+    print("Done.\nClosing fits file")
     program_args.fits_hdu_list.close()
 
     if program_args.ppd_plot:
@@ -258,6 +264,8 @@ def peek_fits(program_args: ViewFITSArgs):
 
 
 def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
+    print("Preparing ppd plot...")
+
     # Work out layout of plots
     plots = program_args.time_step_count
     plot_rows = math.floor(math.sqrt(plots))
@@ -308,6 +316,8 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
 
 
 def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
+    print("Preparing grid plot...")
+
     # Work out layout of plots
     plots = program_args.time_step_count
     plot_rows = math.floor(math.sqrt(plots))
@@ -386,6 +396,8 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
 
 
 def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_phase_data_y):
+    print("Preparing phase plot...")
+
     # Work out layout of plots
     plots = program_args.baseline_count
     plot_rows = math.floor(math.sqrt(plots))
