@@ -125,8 +125,10 @@ def peek_fits(program_args: ViewFITSArgs):
 
     # initialise the bins for out plot
     # array will be [timestep][channel]
-    plot_ppd_data = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
-    plot_ppd_data.fill(0)
+    plot_ppd_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+    plot_ppd_data_x.fill(0)
+    plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+    plot_ppd_data_y.fill(0)
 
     # Grid plot
     plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
@@ -162,7 +164,7 @@ def peek_fits(program_args: ViewFITSArgs):
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
-        print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power")
+        print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power_x, power_y")
 
     time_index = 0
 
@@ -200,13 +202,15 @@ def peek_fits(program_args: ViewFITSArgs):
                         yy_r = data[baseline][index + 6]
                         yy_i = data[baseline][index + 7]
 
-                        power = (xx_r * xx_r) + (yy_r * yy_r) + (xx_i * xx_i) + (yy_i * yy_i)
+                        power_x = math.sqrt(xx_i*xx_i + xx_r*xx_r) # was (xx_r * xx_r) + (yy_r * yy_r) + (xx_i * xx_i) + (yy_i * yy_i)
+                        power_y = math.sqrt(yy_i*yy_i + yy_r*yy_r) 
 
                         if program_args.ppd_plot:
-                            plot_ppd_data[time_index][chan] = plot_ppd_data[time_index][chan] + power
+                            plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
+                            plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
 
                         elif program_args.grid_plot:
-                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power
+                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
 
                         elif program_args.phase_plot:
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
@@ -218,9 +222,9 @@ def peek_fits(program_args: ViewFITSArgs):
                         else:
                             if not program_args.weights:
                                 print(
-                                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13}".format(
+                                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
                                         time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
-                                        power))
+                                        power_x, power_y))
 
                     selected_baseline = selected_baseline + 1
 
@@ -252,7 +256,8 @@ def peek_fits(program_args: ViewFITSArgs):
     program_args.fits_hdu_list.close()
 
     if program_args.ppd_plot:
-        do_ppd_plot(program_args.param_string, program_args, plot_ppd_data)
+        convert_to_db = True
+        do_ppd_plot(program_args.param_string, program_args, plot_ppd_data_x, plot_ppd_data_y, convert_to_db)
 
     if program_args.grid_plot:
         do_grid_plot(program_args.param_string, program_args, plot_grid_data)
@@ -263,7 +268,7 @@ def peek_fits(program_args: ViewFITSArgs):
     print("Done!\n")
 
 
-def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
+def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_data_y, convert_to_db):
     print("Preparing ppd plot...")
 
     # Work out layout of plots
@@ -272,31 +277,42 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
     plot_cols = math.ceil(plots / plot_rows)
     plot_row = 0
     plot_col = 0
+    min_db = 0
 
     # Convert to a dB figure
-    for t in range(0, program_args.time_step_count):
-        for c in range(0, program_args.channel_count):
-            plot_ppd_data[t][c] = math.log10(plot_ppd_data[t][c] + 1) * 10
+    if convert_to_db:
+        for t in range(0, program_args.time_step_count):
+            for c in range(0, program_args.channel_count):
+                plot_ppd_data_x[t][c] = math.log10(plot_ppd_data_x[t][c] + 1) * 10
+                plot_ppd_data_y[t][c] = math.log10(plot_ppd_data_y[t][c] + 1) * 10
 
-    # Get min dB value
-    min_db = np.array(plot_ppd_data).min()
+        # Get min dB value
+        min_db = 0  #min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min()) 
 
     fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for t in range(0, program_args.time_step_count):
+        print(f"Adding data points for plot({t})...")
+
         # Step down the dB by the min so we have a 0 base
         for c in range(0, program_args.channel_count):
-            plot_ppd_data[t][c] = plot_ppd_data[t][c] - min_db
+            plot_ppd_data_x[t][c] = plot_ppd_data_x[t][c] - min_db
+            plot_ppd_data_y[t][c] = plot_ppd_data_y[t][c] - min_db
 
         # Get the current plot
         plot = ax[plot_row][plot_col]
 
         # Draw this plot
-        plot.plot(plot_ppd_data[t])
+        plot.plot(plot_ppd_data_x[t], color='blue')
+        plot.plot(plot_ppd_data_y[t], color='green')
 
         # Set labels
-        plot.set_ylabel("dB", size=6)
+        if convert_to_db:
+            plot.set_ylabel("dB", size=6)
+        else:
+            plot.set_ylabel("Raw value", size=6)
+
         plot.set_xlabel("fine channel", size=6)
 
         # Set plot title
@@ -308,6 +324,8 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data):
         else:
             plot_row = plot_row + 1
             plot_col = 0
+
+    print("Saving figure...")
 
     # Save the final plot to disk
     plt.savefig("ppd_plot.png", bbox_inches='tight', dpi=dpi)
@@ -356,10 +374,13 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     if n_step > 16:
         n_step = 16
 
+
     for time_index in range(0, program_args.time_step_count):
         for t1 in range(0, program_args.tile_count):
             for t2 in range(t1, program_args.tile_count):
                 print(time_index, program_args.tile1 + t1, program_args.tile1 + t2, plot_grid_data[time_index][t2][t1])
+
+        print(f"Adding data points for plot({time_index})...")
 
         # Get the current plot
         plot = ax[plot_row][plot_col]
@@ -390,6 +411,7 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
             plot_row = plot_row + 1
             plot_col = 0
 
+    print("Saving figure...")
     plt.savefig("grid_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved grid_plot.png")
     plt.show()
@@ -397,6 +419,7 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
 
 def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_phase_data_y):
     print("Preparing phase plot...")
+    print(f"Timesteps: {program_args.time_step_count}, tiles: {program_args.tile_count}, channels: {program_args.channel_count}")
 
     # Work out layout of plots
     plots = program_args.baseline_count
@@ -411,6 +434,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
     for i in range(0, program_args.tile_count):
         for j in range(i, program_args.tile_count):
+            print(f"Adding data points for plot({i},{j})...")
             channel_list = range(program_args.channel1, program_args.channel2 + 1)
 
             # Get the current plot
@@ -445,6 +469,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
             # Increment baseline
             baseline = baseline + 1
 
+    print("Saving figure...")
     # Save final plot to disk
     plt.savefig("phase_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved phase_plot.png")
