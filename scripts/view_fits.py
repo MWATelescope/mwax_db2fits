@@ -23,6 +23,7 @@ class ViewFITSArgs:
         self.channel2 = args["channel2"]
 
         self.ppd_plot = args["ppdplot"]
+        self.ppd_plot2 = args["ppdplot2"]
         self.grid_plot = args["gridplot"]
         self.phase_plot_all = args["phaseplot_all"]
         self.phase_plot_one = args["phaseplot_one"]
@@ -30,7 +31,7 @@ class ViewFITSArgs:
         self.weights = args["weights"]
 
         # Are we plotting?
-        self.any_plotting = (self.ppd_plot or self.grid_plot or self.phase_plot_all or self.phase_plot_one)
+        self.any_plotting = (self.ppd_plot or self.ppd_plot2 or self.grid_plot or self.phase_plot_all or self.phase_plot_one)
 
         # Some constants not found in fits file
         self.values = 2     # real and imaginary
@@ -40,12 +41,28 @@ class ViewFITSArgs:
         print(f"Opening fits file {self.filename}...")
         self.fits_hdu_list = fits.open(self.filename)
 
-        # Get number of tiles based on the number of signal chains
-        self.fits_tiles = int(self.fits_hdu_list[0].header["NINPUTS"] / 2)
+        # Determine if it is MWAX or legacy
+        self.corr_version = None
+        try:
+            self.corr_version = self.fits_hdu_list[0].header["CORR_VER"]
+        except:
+            self.corr_version = 1
+        finally:
+            print(f"FITS file is correlator version {self.corr_version}.")
 
         # Get fine channel count from the fits file
-        chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
-        self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
+        if self.corr_version == 1:
+            # in v1 NAXIS1 == baselines * pols * r,i
+            # in v1 NAXIS2 == fine channels
+            self.fits_tiles = 128
+            self.fits_channels = int(self.fits_hdu_list[1].header["NAXIS2"])
+        elif self.corr_version ==2: 
+            # in v2 NAXIS1 == fine channels * pols * r,i
+            # in v2 NAXIS2 == baselines
+            # Get number of tiles based on the number of signal chains
+            self.fits_tiles = int(self.fits_hdu_list[0].header["NINPUTS"] / 2)
+            chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
+            self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
 
         # Check tiles
         if self.tile1 == -1:
@@ -67,8 +84,12 @@ class ViewFITSArgs:
             exit(-1)
 
         # Check time steps
-        # Count = hdus minus primary divided by 2 (we have data then weights)
-        self.fits_time_steps = int((len(self.fits_hdu_list) - 1) / 2)
+        if self.corr_version == 1:
+            self.fits_time_steps = int((len(self.fits_hdu_list)))
+
+        elif self.corr_version == 2:
+            # Count = hdus minus primary divided by 2 (we have data then weights)
+            self.fits_time_steps = int((len(self.fits_hdu_list) - 1) / 2)
 
         if self.time_step1 == -1:
             self.time_step1 = 1
@@ -119,17 +140,22 @@ class ViewFITSArgs:
                             f"{self.tile_count}t/{self.fits_tiles}t"
         print(self.param_string)
 
-
-# freq,baseline,pol
+# v1 = baseline, freq, pol
+# v2 = freq,baseline,pol
 def peek_fits(program_args: ViewFITSArgs):
     print("Initialising data structures...")
 
-    # initialise the bins for out plot
-    # array will be [timestep][channel]
+    # ppd array will be [timestep][channel]
     plot_ppd_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
     plot_ppd_data_x.fill(0)
     plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
     plot_ppd_data_y.fill(0)
+
+    # ppd plot 2 array will be [timestep][channel][baseline]
+    plot_ppd2_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count, program_args.baseline_count))
+    plot_ppd2_data_x.fill(0)
+    plot_ppd2_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count, program_args.baseline_count))
+    plot_ppd2_data_y.fill(0)
 
     # Grid plot
     plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
@@ -209,6 +235,10 @@ def peek_fits(program_args: ViewFITSArgs):
                         if program_args.ppd_plot:
                             plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
                             plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
+                       
+                        elif program_args.ppd_plot2:
+                            plot_ppd2_data_x[time_index][chan][selected_baseline] = power_x
+                            plot_ppd2_data_y[time_index][chan][selected_baseline] = power_y
 
                         elif program_args.grid_plot:
                             plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
@@ -259,6 +289,10 @@ def peek_fits(program_args: ViewFITSArgs):
     if program_args.ppd_plot:
         convert_to_db = True
         do_ppd_plot(program_args.param_string, program_args, plot_ppd_data_x, plot_ppd_data_y, convert_to_db)
+
+    if program_args.ppd_plot2:
+        convert_to_db = False
+        do_ppd_plot2(program_args.param_string, program_args, plot_ppd2_data_x, plot_ppd2_data_y, convert_to_db)
 
     if program_args.grid_plot:
         do_grid_plot(program_args.param_string, program_args, plot_grid_data)
@@ -331,6 +365,73 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
     # Save the final plot to disk
     plt.savefig("ppd_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved ppd_plot.png")
+    plt.show()
+
+def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_data_y, convert_to_db):
+    print("Preparing ppd plot2...")
+
+    # Work out layout of plots
+    plots = program_args.time_step_count
+    plot_rows = math.floor(math.sqrt(plots))
+    plot_cols = math.ceil(plots / plot_rows)
+    plot_row = 0
+    plot_col = 0
+    min_db = 0
+
+    # Convert to a dB figure
+    if convert_to_db:
+        for t in range(0, program_args.time_step_count):
+            for c in range(0, program_args.channel_count):
+                for b in range(0, program_args.baseline_count):
+                    plot_ppd_data_x[t][c][b] = math.log10(plot_ppd_data_x[t][c][b] + 1) * 10
+                    plot_ppd_data_y[t][c][b] = math.log10(plot_ppd_data_y[t][c][b] + 1) * 10
+
+        # Get min dB value
+        min_db = 0  #min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min()) 
+
+    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
+    fig.suptitle(title)
+
+    for t in range(0, program_args.time_step_count):
+        print(f"Adding data points for plot({t})...")
+
+        # Step down the dB by the min so we have a 0 base
+        if min_db != 0 :
+            for c in range(0, program_args.channel_count):
+                    for b in range(0, program_args.baseline_count):
+                        plot_ppd_data_x[t][c][b] = plot_ppd_data_x[t][c][b] - min_db
+                        plot_ppd_data_y[t][c][b] = plot_ppd_data_y[t][c][b] - min_db
+
+        # Get the current plot
+        plot = ax[plot_row][plot_col]
+
+        # Draw this plot
+        plot.plot(plot_ppd_data_x[t], 'o', markersize=1, color='blue')
+        plot.plot(plot_ppd_data_y[t], 'o', markersize=1, color='green')
+
+        # Set labels
+        if convert_to_db:
+            plot.set_ylabel("dB", size=6)
+        else:
+            plot.set_ylabel("Raw value", size=6)
+
+        plot.set_xlabel("fine channel", size=6)
+
+        # Set plot title
+        plot.set_title(f"t={t + program_args.time_step1}", size=6)
+
+        # Increment so we know which plot we are on
+        if plot_col < plot_cols - 1:
+            plot_col = plot_col + 1
+        else:
+            plot_row = plot_row + 1
+            plot_col = 0
+
+    print("Saving figure...")
+
+    # Save the final plot to disk
+    plt.savefig("ppd_plot2.png", bbox_inches='tight', dpi=dpi)
+    print("saved ppd_plot2.png")
     plt.show()
 
 
@@ -506,9 +607,11 @@ if __name__ == '__main__':
                         default=-1, type=int)
     parser.add_argument("-a", "--autosonly", required=False, help="Only output the auto correlations",
                         action='store_true')
-    parser.add_argument("-p", "--ppdplot", required=False, help="Also create a ppd plot",
+    parser.add_argument("-p", "--ppdplot", required=False, help="Create a ppd plot",
                         action='store_true')
-    parser.add_argument("-g", "--gridplot", required=False, help="Also create a grid / baseline plot",
+    parser.add_argument("-p2", "--ppdplot2", required=False, help="Create a ppd plot that does not sum across all baselines. ie it plots all baselines",
+                        action='store_true')
+    parser.add_argument("-g", "--gridplot", required=False, help="Create a grid / baseline plot",
                         action='store_true')
     parser.add_argument("-ph", "--phaseplot_all", required=False, help="Will do a phase plot for all baselines for given antennas and timesteps",
                         action='store_true')
