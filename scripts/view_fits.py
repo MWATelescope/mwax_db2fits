@@ -24,12 +24,13 @@ class ViewFITSArgs:
 
         self.ppd_plot = args["ppdplot"]
         self.grid_plot = args["gridplot"]
-        self.phase_plot = args["phaseplot"]
+        self.phase_plot_all = args["phaseplot_all"]
+        self.phase_plot_one = args["phaseplot_one"]
 
         self.weights = args["weights"]
 
         # Are we plotting?
-        self.any_plotting = (self.ppd_plot or self.grid_plot or self.phase_plot)
+        self.any_plotting = (self.ppd_plot or self.grid_plot or self.phase_plot_all or self.phase_plot_one)
 
         # Some constants not found in fits file
         self.values = 2     # real and imaginary
@@ -108,9 +109,9 @@ class ViewFITSArgs:
 
         # Some calculated fields
         self.tile_count = self.tile2 - self.tile1 + 1
+        self.baseline_count = int((self.tile_count * (self.tile_count + 1)) / 2)
         self.channel_count = self.channel2 - self.channel1 + 1
         self.time_step_count = self.time_step2 - self.time_step1 + 1
-        self.baseline_count = int((self.tile_count * (self.tile_count + 1)) / 2)
 
         # print params
         self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} tile={self.tile1}-{self.tile2} " \
@@ -212,7 +213,7 @@ def peek_fits(program_args: ViewFITSArgs):
                         elif program_args.grid_plot:
                             plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
 
-                        elif program_args.phase_plot:
+                        elif program_args.phase_plot_all or program_args.phase_plot_one:
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
                             phase_y = math.degrees(math.atan2(yy_i, yy_r))
 
@@ -220,7 +221,7 @@ def peek_fits(program_args: ViewFITSArgs):
                             plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
 
                         else:
-                            if not program_args.weights:
+                            if not program_args.weights and not program_args.any_plotting:
                                 print(
                                     "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
                                         time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
@@ -262,7 +263,7 @@ def peek_fits(program_args: ViewFITSArgs):
     if program_args.grid_plot:
         do_grid_plot(program_args.param_string, program_args, plot_grid_data)
 
-    if program_args.phase_plot:
+    if program_args.phase_plot_all or program_args.phase_plot_one:
         do_phase_plot(program_args.param_string, program_args, plot_phase_data_x, plot_phase_data_y)
 
     print("Done!\n")
@@ -421,8 +422,12 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     print("Preparing phase plot...")
     print(f"Timesteps: {program_args.time_step_count}, tiles: {program_args.tile_count}, channels: {program_args.channel_count}")
 
-    # Work out layout of plots
-    plots = program_args.baseline_count
+    # Work out layout of plots 
+    if program_args.phase_plot_one:
+        plots = 1
+    else:
+        plots = program_args.baseline_count
+
     plot_rows = math.floor(math.sqrt(plots))
     plot_cols = math.ceil(plots / plot_rows)
     plot_row = 0
@@ -434,6 +439,14 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
     for i in range(0, program_args.tile_count):
         for j in range(i, program_args.tile_count):
+            if program_args.phase_plot_one:
+               print(f"{i} vs {j}")
+               if not (i == 0 and j == (program_args.tile_count - 1)):
+                   # skip this plot 
+                   print("skip") 
+                   baseline = baseline + 1
+                   continue
+
             print(f"Adding data points for plot({i},{j})...")
             channel_list = range(program_args.channel1, program_args.channel2 + 1)
 
@@ -497,7 +510,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument("-g", "--gridplot", required=False, help="Also create a grid / baseline plot",
                         action='store_true')
-    parser.add_argument("-ph", "--phaseplot", required=False, help="Will do a phase plot for a baseline and timestep",
+    parser.add_argument("-ph", "--phaseplot_all", required=False, help="Will do a phase plot for all baselines for given antennas and timesteps",
+                        action='store_true')
+
+    parser.add_argument("-ph1", "--phaseplot_one", required=False, help="Will do a phase plot for given baseline and timesteps",
                         action='store_true')
 
     parser.add_argument("-w", "--weights", required=False, help="Dump the weights", action='store_true')
