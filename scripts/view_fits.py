@@ -373,7 +373,7 @@ def peek_fits(program_args: ViewFITSArgs):
         do_ppd_plot(program_args.param_string, program_args, plot_ppd_data_x, plot_ppd_data_y, convert_to_db)
 
     if program_args.ppd_plot2:
-        convert_to_db = False
+        convert_to_db = True
         do_ppd_plot2(program_args.param_string, program_args, plot_ppd2_data_x, plot_ppd2_data_y, convert_to_db)
 
     if program_args.grid_plot:
@@ -610,7 +610,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     if program_args.phase_plot_one:
         plots = 1
     else:
-        plots = program_args.baseline_count
+        plots = (program_args.tile2 - program_args.tile1) + 1
 
     plot_rows = math.floor(math.sqrt(plots))
     plot_cols = math.ceil(plots / plot_rows)
@@ -631,6 +631,10 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
                    print("skip") 
                    baseline = baseline + 1
                    continue
+            else:
+               if i != program_args.tile1:
+                   print("skip")
+                   continue
 
             print(f"Adding data points for plot({i},{j})...")
             channel_list = range(program_args.channel1, program_args.channel2 + 1)
@@ -640,8 +644,8 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
             # Do plots
             for t in range(0, program_args.time_step_count):
-                plot.plot(channel_list, plot_phase_data_x[t][baseline], 'o', markersize=1, color='orange')
-                plot.plot(channel_list, plot_phase_data_y[t][baseline], 'o', markersize=1, color='blue')
+                plot.plot(channel_list, plot_phase_data_x[t][baseline], 'o', markersize=3, color='blue')
+                plot.plot(channel_list, plot_phase_data_y[t][baseline], 'o', markersize=3, color='green')
 
             # Set labels
             # Only do y label for first col
@@ -653,7 +657,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
                 plot.set_xlabel("fine channel", size=6)
 
             # Ensure Y axis goes from -180 to 180
-            plot.set_ylim([-180, 180])
+            plot.set_ylim([-200, 200])
 
             plot.set_title(f"{i + program_args.tile1} v {j + program_args.tile1}", size=6)
 
