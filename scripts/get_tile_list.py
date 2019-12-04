@@ -3,7 +3,7 @@ import argparse
 
 
 def dump(filename):
-    fits_hdu_list = fits.open(filename)
+    fits_hdu_list = fits.open(filename, mode="update")
 
     # Determine the tile order
     rf_list = []
@@ -28,6 +28,10 @@ def dump(filename):
     print("Order, Tile, TileName")
     for tile in tile_list:
         print(tile)
+
+    for x in fits_hdu_list[1].data:
+        #x[8]="EL_0"
+        print(x[8])
 
     # clean up
     fits_hdu_list.close()
