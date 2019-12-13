@@ -47,11 +47,11 @@ int dada_dbfits_open(dada_client_t* client)
   {
     multilog(log, LOG_INFO, "dada_dbfits_open(): %s == %s\n", HEADER_MODE, ctx->mode);
 
-    if (strncmp(ctx->mode, MWAX_MODE_HW_LFILES, MWAX_MODE_LEN) == 0)
+    if (strncmp(ctx->mode, MWAX_MODE_CORRELATOR, MWAX_MODE_LEN) == 0)
     {
       // Normal operations      
     }      
-    else if(strncmp(ctx->mode, MWAX_MODE_VOLTAGE_START, MWAX_MODE_LEN) == 0)
+    else if(strncmp(ctx->mode, MWAX_MODE_VOLTAGE_CAPTURE, MWAX_MODE_LEN) == 0)
     {
       // Voltage_Start - don't correlate 
       return EXIT_SUCCESS;
@@ -428,7 +428,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  if (strcmp(ctx->mode, MWAX_MODE_HW_LFILES) == 0)
+  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
   {
     multilog_t * log = (multilog_t *) ctx->log;
     
@@ -617,7 +617,7 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  if (strcmp(ctx->mode, MWAX_MODE_HW_LFILES) == 0)
+  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
   {
     multilog_t * log = (multilog_t *) ctx->log;
 
@@ -648,7 +648,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   int do_close_fits = 0;
 
   // If we're still in CAPTURE mode...
-  if (strcmp(ctx->mode, MWAX_MODE_HW_LFILES) == 0)
+  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
   {
     // Some sanity checks:
     int current_duration = (int)((float)(ctx->obs_marker_number) * ((float)ctx->int_time_msec / 1000.0));
@@ -679,7 +679,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
       do_close_fits = 1;
     }
   }
-  else if (strcmp(ctx->mode, MWAX_MODE_HW_LFILES) != 0)
+  else if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) != 0)
   {
     do_close_fits = 1;
   }
