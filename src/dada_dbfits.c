@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include "dada_dbfits.h"
-#include "mwax_global_defs.h" // From mwax-common
+#include "../mwax_common/mwax_global_defs.h" // From mwax-common
 #include "utils.h"
 
 /**
@@ -47,21 +47,21 @@ int dada_dbfits_open(dada_client_t* client)
   {
     multilog(log, LOG_INFO, "dada_dbfits_open(): %s == %s\n", HEADER_MODE, ctx->mode);
 
-    if (strncmp(ctx->mode, MWAX_MODE_CORRELATOR, MWAX_MODE_LEN) == 0)
+    if (is_mwax_mode_correlator(ctx->mode) == 0)
     {
       // Normal operations      
     }      
-    else if(strncmp(ctx->mode, MWAX_MODE_VOLTAGE_CAPTURE, MWAX_MODE_LEN) == 0)
+    else if(is_mwax_mode_vcs(ctx->mode) == 0)
     {
       // Voltage_Start - don't correlate 
       return EXIT_SUCCESS;
     }
-    else if(strncmp(ctx->mode, MWAX_MODE_NO_CAPTURE, MWAX_MODE_LEN) == 0)
+    else if(is_mwax_mode_no_capture(ctx->mode) == 0)
     {
-      // Idle - don't correlate 
+      // don't correlate 
       return EXIT_SUCCESS;
     }
-    else if (strncmp(ctx->mode, MWAX_MODE_QUIT, MWAX_MODE_LEN) == 0)
+    else if (is_mwax_mode_quit(ctx->mode) == 0)
     {
       // We'll flag we want to quit
       set_quit(1);
@@ -428,7 +428,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
+  if (is_mwax_mode_correlator(ctx->mode) == 0)
   {
     multilog_t * log = (multilog_t *) ctx->log;
     
@@ -617,7 +617,7 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
 
-  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
+  if (is_mwax_mode_correlator(ctx->mode) == 0)
   {
     multilog_t * log = (multilog_t *) ctx->log;
 
@@ -648,7 +648,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   int do_close_fits = 0;
 
   // If we're still in CAPTURE mode...
-  if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) == 0)
+  if (is_mwax_mode_correlator(ctx->mode) == 0)
   {
     // Some sanity checks:
     int current_duration = (int)((float)(ctx->obs_marker_number) * ((float)ctx->int_time_msec / 1000.0));
@@ -679,7 +679,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
       do_close_fits = 1;
     }
   }
-  else if (strcmp(ctx->mode, MWAX_MODE_CORRELATOR) != 0)
+  else
   {
     do_close_fits = 1;
   }
