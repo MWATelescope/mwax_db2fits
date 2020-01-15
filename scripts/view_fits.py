@@ -9,29 +9,30 @@ dpi = 100
 
 class ViewFITSArgs:
     def __init__(self, passed_args):
-        self.filename = args["filename"]
+        self.filename = passed_args["filename"]
 
-        self.time_step1 = args["timestep1"]
-        self.time_step2 = args["timestep2"]
+        self.time_step1 = passed_args["timestep1"]
+        self.time_step2 = passed_args["timestep2"]
 
-        self.tile1 = args["ant1"]
-        self.tile2 = args["ant2"]
+        self.tile1 = passed_args["ant1"]
+        self.tile2 = passed_args["ant2"]
 
-        self.autos_only = args["autosonly"]
+        self.autos_only = passed_args["autosonly"]
 
-        self.channel1 = args["channel1"]
-        self.channel2 = args["channel2"]
+        self.channel1 = passed_args["channel1"]
+        self.channel2 = passed_args["channel2"]
 
-        self.ppd_plot = args["ppdplot"]
-        self.ppd_plot2 = args["ppdplot2"]
-        self.grid_plot = args["gridplot"]
-        self.phase_plot_all = args["phaseplot_all"]
-        self.phase_plot_one = args["phaseplot_one"]
+        self.ppd_plot = passed_args["ppdplot"]
+        self.ppd_plot2 = passed_args["ppdplot2"]
+        self.grid_plot = passed_args["gridplot"]
+        self.phase_plot_all = passed_args["phaseplot_all"]
+        self.phase_plot_one = passed_args["phaseplot_one"]
 
-        self.weights = args["weights"]
+        self.weights = passed_args["weights"]
 
         # Are we plotting?
-        self.any_plotting = (self.ppd_plot or self.ppd_plot2 or self.grid_plot or self.phase_plot_all or self.phase_plot_one)
+        self.any_plotting = (self.ppd_plot or self.ppd_plot2 or self.grid_plot or
+                             self.phase_plot_all or self.phase_plot_one)
 
         # Some constants not found in fits file
         self.values = 2     # real and imaginary
@@ -41,31 +42,13 @@ class ViewFITSArgs:
         print(f"Opening fits file {self.filename}...")
         self.fits_hdu_list = fits.open(self.filename)
 
-        # Determine if it is MWAX or legacy
-        self.corr_version = None
-        try:
-            self.corr_version = self.fits_hdu_list[0].header["CORR_VER"]
-        except:
-            self.corr_version = 1
-        finally:
-            print(f"FITS file is correlator version {self.corr_version}.")
-
-        # Get fine channel count from the fits file
-        if self.corr_version == 1:
-            # in v1 NAXIS1 == baselines * pols * r,i
-            # in v1 NAXIS2 == fine channels
-            self.fits_tiles = 128
-            self.fits_channels = int(self.fits_hdu_list[1].header["NAXIS2"])
-            self.fits_has_weights = False
-
-        elif self.corr_version ==2: 
-            # in v2 NAXIS1 == fine channels * pols * r,i
-            # in v2 NAXIS2 == baselines
-            # Get number of tiles based on the number of signal chains
-            self.fits_tiles = int(self.fits_hdu_list[0].header["NINPUTS"] / 2)
-            chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
-            self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
-            self.fits_has_weights = True
+        # in v2 NAXIS1 == fine channels * pols * r,i
+        # in v2 NAXIS2 == baselines
+        # Get number of tiles based on the number of signal chains
+        self.fits_tiles = int(self.fits_hdu_list[0].header["NINPUTS"] / 2)
+        chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
+        self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
+        self.fits_has_weights = True
 
         # Check tiles
         if self.tile1 == -1:
@@ -143,6 +126,7 @@ class ViewFITSArgs:
                             f"{self.tile_count}t/{self.fits_tiles}t"
         print(self.param_string)
 
+
 # v1 = baseline, freq, pol
 # v2 = freq,baseline,pol
 def peek_fits(program_args: ViewFITSArgs):
@@ -199,9 +183,13 @@ def peek_fits(program_args: ViewFITSArgs):
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
-        print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power_x, power_y")
+        #print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power_x, power_y")
+        print("xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i")
 
     time_index = 0
+
+    if not program_args.any_plotting:
+        dump_file = open("mwax_dump.csv", "w")
 
     for hdu in time_step_list:
         time = hdu.header["MARKER"] + 1
@@ -212,139 +200,79 @@ def peek_fits(program_args: ViewFITSArgs):
         baseline = 0
         selected_baseline = 0
 
-        if program_args.corr_version == 2:
-            #
-            # Correlator v2
-            #
+        #
+        # Correlator v2
+        #
 
-            # was:
-            # for i in range(0, program_args.tile2 + 1):
-            #   for j in range(i, program_args.fits_tiles):
-            for i in range(0, program_args.tile2 + 1):
-                for j in range(i, program_args.fits_tiles):
-                    # Explaining this if:
-                    # Line 1. Check for autos if that's what we asked for
-                    # Line 2. OR just be True if we didn't ask for autos only.
-                    # Line 3 (Applicable to cases 1 and 2 above): Check the selected tile1 and tile2 are in range
-                    if (((i == j and program_args.autos_only is True)
-                         or (program_args.autos_only is False)) and
-                       (i >= program_args.tile1 and j >= program_args.tile1 and j <= program_args.tile2)):
-                        #print(f"t {time}, baseline {baseline}, {i}, {j}")
+        # was:
+        # for i in range(0, program_args.tile2 + 1):
+        #   for j in range(i, program_args.fits_tiles):
+        for i in range(0, program_args.tile2 + 1):
+            for j in range(i, program_args.fits_tiles):
+                # Explaining this if:
+                # Line 1. Check for autos if that's what we asked for
+                # Line 2. OR just be True if we didn't ask for autos only.
+                # Line 3 (Applicable to cases 1 and 2 above): Check the selected tile1 and tile2 are in range
+                if (((i == j and program_args.autos_only is True)
+                     or (program_args.autos_only is False)) and
+                   (i >= program_args.tile1 and j >= program_args.tile1 and j <= program_args.tile2)):
+                    #print(f"t {time}, baseline {baseline}, {i}, {j}")
 
-                        for chan in range(program_args.channel1, program_args.channel2 + 1):
-                            index = chan * (program_args.pols * program_args.values)
+                    for chan in range(program_args.channel1, program_args.channel2 + 1):
+                        index = chan * (program_args.pols * program_args.values)
 
-                            xx_r = data[baseline][index]
-                            xx_i = data[baseline][index + 1]
+                        xx_r = data[baseline][index]
+                        xx_i = data[baseline][index + 1]
 
-                            xy_r = data[baseline][index + 2]
-                            xy_i = data[baseline][index + 3]
+                        xy_r = data[baseline][index + 2]
+                        xy_i = data[baseline][index + 3]
 
-                            yx_r = data[baseline][index + 4]
-                            yx_i = data[baseline][index + 5]
+                        yx_r = data[baseline][index + 4]
+                        yx_i = data[baseline][index + 5]
 
-                            yy_r = data[baseline][index + 6]
-                            yy_i = data[baseline][index + 7]
+                        yy_r = data[baseline][index + 6]
+                        yy_i = data[baseline][index + 7]
 
-                            power_x = math.sqrt(xx_i*xx_i + xx_r*xx_r)
-                            power_y = math.sqrt(yy_i*yy_i + yy_r*yy_r)
+                        power_x = math.sqrt(xx_i*xx_i + xx_r*xx_r)
+                        power_y = math.sqrt(yy_i*yy_i + yy_r*yy_r)
 
-                            if program_args.ppd_plot:
-                                plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
-                                plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
+                        if program_args.ppd_plot:
+                            plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
+                            plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
 
-                            elif program_args.ppd_plot2:
-                                plot_ppd2_data_x[time_index][chan][selected_baseline] = power_x
-                                plot_ppd2_data_y[time_index][chan][selected_baseline] = power_y
+                        elif program_args.ppd_plot2:
+                            plot_ppd2_data_x[time_index][chan][selected_baseline] = power_x
+                            plot_ppd2_data_y[time_index][chan][selected_baseline] = power_y
 
-                            elif program_args.grid_plot:
-                                plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
+                        elif program_args.grid_plot:
+                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
 
-                            elif program_args.phase_plot_all or program_args.phase_plot_one:
-                                phase_x = math.degrees(math.atan2(xx_i, xx_r))
-                                phase_y = math.degrees(math.atan2(yy_i, yy_r))
+                        elif program_args.phase_plot_all or program_args.phase_plot_one:
+                            phase_x = math.degrees(math.atan2(xx_i, xx_r))
+                            phase_y = math.degrees(math.atan2(yy_i, yy_r))
 
-                                plot_phase_data_x[time_index][selected_baseline][chan] = phase_x
-                                plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
+                            plot_phase_data_x[time_index][selected_baseline][chan] = phase_x
+                            plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
 
-                            else:
-                                if not program_args.weights and not program_args.any_plotting:
-                                    print(
-                                        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
-                                            time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
-                                           power_x, power_y))
+                        else:
+                            if not program_args.weights and not program_args.any_plotting:
+                                #print(
+                                #    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
+                                #        time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
+                                #       power_x, power_y))
+                                dump_file.write(
+                                    "{0},{1},{2},{3},{4},{5},{6},{7}\n".format(
+                                        xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,))
 
-                        selected_baseline = selected_baseline + 1
+                    selected_baseline = selected_baseline + 1
 
-                    baseline = baseline + 1
+                baseline = baseline + 1
 
-            time_index = time_index + 1
-            print(" done!")
-        else:
-            #
-            # Correlator v1
-            #
-            for chan in range(program_args.channel1, program_args.channel2 + 1):
-                baseline = 0
-                selected_baseline = 0
+        time_index = time_index + 1
+        print(" done!")
 
-                for i in range(0, program_args.fits_tiles):
-                    for j in range(0, i + 1):
-                        # Explaining this if:
-                        # Line 1. Check for autos if that's what we asked for
-                        # Line 2. OR just be True if we didn't ask for autos only.
-                        # Line 3 (Applicable to cases 1 and 2 above): Check the selected tile1 and tile2 are in range
-                        if (((i == j and program_args.autos_only is True)
-                             or (program_args.autos_only is False)) and
-                                (program_args.tile1 <= i <= program_args.tile2 and program_args.tile1 <= j)):
-                            index = baseline * (program_args.pols * program_args.values)
-
-                            xx_r = data[chan][index]
-                            xx_i = data[chan][index + 1]
-
-                            xy_r = data[chan][index + 2]
-                            xy_i = data[chan][index + 3]
-
-                            yx_r = data[chan][index + 4]
-                            yx_i = data[chan][index + 5]
-
-                            yy_r = data[chan][index + 6]
-                            yy_i = data[chan][index + 7]
-
-                            power_x = math.sqrt(xx_i * xx_i + xx_r * xx_r)
-                            power_y = math.sqrt(yy_i * yy_i + yy_r * yy_r)
-
-                            if program_args.ppd_plot:
-                                plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
-                                plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
-
-                            elif program_args.ppd_plot2:
-                                plot_ppd2_data_x[time_index][chan][selected_baseline] = power_x
-                                plot_ppd2_data_y[time_index][chan][selected_baseline] = power_y
-
-                            elif program_args.grid_plot:
-                                plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
-
-                            elif program_args.phase_plot_all or program_args.phase_plot_one:
-                                phase_x = math.degrees(math.atan2(xx_i, xx_r))
-                                phase_y = math.degrees(math.atan2(yy_i, yy_r))
-
-                                plot_phase_data_x[time_index][selected_baseline][chan] = phase_x
-                                plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
-
-                            else:
-                                if not program_args.weights and not program_args.any_plotting:
-                                    print(
-                                        "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
-                                            time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
-                                            0, 0))
-
-                            selected_baseline = selected_baseline + 1
-
-                        baseline = baseline + 1
-
-            time_index = time_index + 1
-            print(" done!")
+    if not program_args.any_plotting:
+        dump_file.close()
 
     print("Processing weights...", end="")
     for hdu in weight_list:
@@ -559,7 +487,6 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     if n_step > 16:
         n_step = 16
 
-
     for time_index in range(0, program_args.time_step_count):
         for t1 in range(0, program_args.tile_count):
             for t2 in range(t1, program_args.tile_count):
@@ -622,8 +549,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     fig.suptitle(title)
 
     for i in range(0, program_args.tile_count):
-        for j in range(i if program_args.corr_version == 2 else 0,
-                       program_args.tile_count if program_args.corr_version == 2 else i + 1):
+        for j in range(i, program_args.tile_count):
             if program_args.phase_plot_one:
                print(f"{i} vs {j}")
                if not (i == 0 and j == (program_args.tile_count - 1)):
