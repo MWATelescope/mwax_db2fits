@@ -2,4 +2,3 @@ astropy
 matplotlib
 numpy
 python-dateutil
-pyuvdata
