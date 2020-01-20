@@ -59,9 +59,10 @@ class MWAData:
             i = i + 1
 
     def get_data(self, timestep, baseline):
+        # timestep is from t1 to tN
         # uv_data is in 4d - bl, time, freq, pol(r.i)
         unique_times = self.UV.get_times((0, 0, 'xx'))
-        jd = unique_times[timestep]  # This gets unique times for an antenna pair and polarisation
+        jd = unique_times[timestep - 1]  # This gets unique times for an antenna pair and polarisation
         self.timestep_unix = jd_to_unix(jd)
         self.timestep_datetime = jd_to_datetime(jd)
 
@@ -97,7 +98,7 @@ class MWAData:
                                 "{2.real:f},{2.imag:f},"
                                 "{3.real:f},{3.imag:f}\n".format(row[XX], row[XY], row[YX], row[YY]))
 
-    def plot(self, uv_data, baseline):
+    def plot(self, uv_data, baseline, convert_to_db):
         # uv_data is in 4d - bl, time, freq, pol(r.i)
         # baseline = None for all or (a,b) where a and b are antenna numbers
         # Produce X power and Y power
@@ -117,8 +118,9 @@ class MWAData:
                                               (uv_data[bl, 0, f, YY].imag ** 2))
 
             # Convert to dB
-            plot_array[f, 0] = (math.log10(plot_array[f, 0] + 1) * 10)
-            plot_array[f, 1] = (math.log10(plot_array[f, 1] + 1) * 10)
+            if convert_to_db:
+                plot_array[f, 0] = (math.log10(plot_array[f, 0] + 1) * 10)
+                plot_array[f, 1] = (math.log10(plot_array[f, 1] + 1) * 10)
 
         fig, ax = plt.subplots()
 
@@ -129,7 +131,8 @@ class MWAData:
         ax.set_title(f"PPD Legacy MWA ({baseline_text} at {self.timestep_unix}/{self.timestep_datetime})")
         ax.set_xlabel('Fine Channel')
         ax.set_ylabel('db')
-        ax.plot(plot_array)
+        ax.plot(plot_array[:, 0], color='blue')
+        ax.plot(plot_array[:, 1], color='green')
         plt.show()
 
     def get_antenna_index_by_name(self, antenna_name):
@@ -196,6 +199,6 @@ if __name__ == '__main__':
             #for i in range(0, 10):
             #    for j in range(i, 10):
             #        data.plot(dump_data, (i, j))
-            data.plot(dump_data, arg_baseline)
+            data.plot(dump_data, arg_baseline, convert_to_db=True)
 
     print("Complete")

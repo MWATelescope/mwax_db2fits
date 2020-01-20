@@ -5,6 +5,8 @@ import numpy as np
 import math
 
 dpi = 100
+MODE_RANGE = "RANGE"
+MODE_BASELINE = "BASELINE"
 
 
 class ViewFITSArgs:
@@ -29,6 +31,7 @@ class ViewFITSArgs:
         self.phase_plot_one = passed_args["phaseplot_one"]
 
         self.weights = passed_args["weights"]
+        self.mode = passed_args["mode"]
 
         # Are we plotting?
         self.any_plotting = (self.ppd_plot or self.ppd_plot2 or self.grid_plot or
@@ -49,6 +52,11 @@ class ViewFITSArgs:
         chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
         self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
         self.fits_has_weights = True
+
+        # Check mode
+        if self.mode != MODE_RANGE and self.mode != MODE_BASELINE:
+            print(f"Error, mode should be {MODE_RANGE} or {MODE_BASELINE}!")
+            exit(-1)
 
         # Check tiles
         if self.tile1 == -1:
@@ -115,16 +123,42 @@ class ViewFITSArgs:
 
         # Some calculated fields
         self.tile_count = self.tile2 - self.tile1 + 1
-        self.baseline_count = int((self.tile_count * (self.tile_count + 1)) / 2)
+
+        if self.mode == MODE_BASELINE:
+            self.baseline_count = 1
+        else:
+            self.baseline_count = int((self.tile_count * (self.tile_count + 1)) / 2)
+
         self.fits_baseline_count = int((self.fits_tiles * (self.fits_tiles + 1)) / 2)
         self.channel_count = self.channel2 - self.channel1 + 1
         self.time_step_count = self.time_step2 - self.time_step1 + 1
 
+        self.hdu_time1 = (self.time_step1 * 2) - 1  # e.g. t2 = 2*2 -1 = 3
+        self.unix_time1 = self.fits_hdu_list[self.hdu_time1].header["TIME"] + \
+                          (self.fits_hdu_list[self.hdu_time1].header["MILLITIM"] / 1000)
+
+        self.hdu_time2 = (self.time_step2 * 2) - 1
+        self.unix_time2 = self.fits_hdu_list[self.hdu_time2].header["TIME"] + \
+                          (self.fits_hdu_list[self.hdu_time2].header["MILLITIM"] / 1000)
+
         # print params
-        self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} tile={self.tile1}-{self.tile2} " \
+        self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} " \
+                            f"t_hdu={self.hdu_time1}-{self.hdu_time2} \n" \
+                            f"t_unix={self.unix_time1}-{self.unix_time2} " \
+                            f"tile={self.tile1}-{self.tile2} " \
                             f"ch={self.channel1}-{self.channel2} autosonly?={self.autos_only} " \
                             f"{self.tile_count}t/{self.fits_tiles}t"
         print(self.param_string)
+
+
+def meets_criteria(i, j, a1, a2, mode):
+    # mode == RANGE | BASELINE
+    if mode == MODE_RANGE:
+        return i >= a1 and j <= a2
+    elif mode == MODE_BASELINE:
+        return i == a1 and j == a2
+    else:
+        return None
 
 
 # v1 = baseline, freq, pol
@@ -138,10 +172,10 @@ def peek_fits(program_args: ViewFITSArgs):
     plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
     plot_ppd_data_y.fill(0)
 
-    # ppd plot 2 array will be [timestep][channel][baseline]
-    plot_ppd2_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count, program_args.baseline_count))
+    # ppd plot 2 array will be [timestep][baseline][channel]
+    plot_ppd2_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
     plot_ppd2_data_x.fill(0)
-    plot_ppd2_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count, program_args.baseline_count))
+    plot_ppd2_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
     plot_ppd2_data_y.fill(0)
 
     # Grid plot
@@ -176,10 +210,6 @@ def peek_fits(program_args: ViewFITSArgs):
     # print the header of each HDU, including the primary
     print("Primary HDU:\n")
     print(repr(program_args.fits_hdu_list[0].header))
-    
-    # Debug only
-    for h in time_step_list:
-        print(f"{repr(h.header)}\n")
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
@@ -203,6 +233,8 @@ def peek_fits(program_args: ViewFITSArgs):
         #
         # Correlator v2
         #
+        print("HDU header for this timestep:")
+        print(repr(hdu.header))
 
         # was:
         # for i in range(0, program_args.tile2 + 1):
@@ -213,10 +245,10 @@ def peek_fits(program_args: ViewFITSArgs):
                 # Line 1. Check for autos if that's what we asked for
                 # Line 2. OR just be True if we didn't ask for autos only.
                 # Line 3 (Applicable to cases 1 and 2 above): Check the selected tile1 and tile2 are in range
-                if (((i == j and program_args.autos_only is True)
-                     or (program_args.autos_only is False)) and
-                   (i >= program_args.tile1 and j >= program_args.tile1 and j <= program_args.tile2)):
-                    #print(f"t {time}, baseline {baseline}, {i}, {j}")
+                if ((i == j and program_args.autos_only is True) or
+                   (program_args.autos_only is False)) and \
+                   (meets_criteria(i, j, program_args.tile1, program_args.tile2, program_args.mode)):
+                    print(f"t {time}, baseline {baseline}, {i}, {j}")
 
                     for chan in range(program_args.channel1, program_args.channel2 + 1):
                         index = chan * (program_args.pols * program_args.values)
@@ -241,8 +273,8 @@ def peek_fits(program_args: ViewFITSArgs):
                             plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
 
                         elif program_args.ppd_plot2:
-                            plot_ppd2_data_x[time_index][chan][selected_baseline] = power_x
-                            plot_ppd2_data_y[time_index][chan][selected_baseline] = power_y
+                            plot_ppd2_data_x[time_index][selected_baseline][chan] = power_x
+                            plot_ppd2_data_y[time_index][selected_baseline][chan] = power_y
 
                         elif program_args.grid_plot:
                             plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
@@ -332,7 +364,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
                 plot_ppd_data_y[t][c] = math.log10(plot_ppd_data_y[t][c] + 1) * 10
 
         # Get min dB value
-        min_db = 0  #min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min()) 
+        min_db = 0 # min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min())
 
     fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
@@ -361,7 +393,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
         plot.set_xlabel("fine channel", size=6)
 
         # Set plot title
-        plot.set_title(f"t={t + program_args.time_step1}", size=6)
+        plot.set_title(f"t={t + program_args.unix_time1}", size=6)
 
         # Increment so we know which plot we are on
         if plot_col < plot_cols - 1:
@@ -376,6 +408,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
     plt.savefig("ppd_plot.png", bbox_inches='tight', dpi=dpi)
     print("saved ppd_plot.png")
     plt.show()
+
 
 def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_data_y, convert_to_db):
     print("Preparing ppd plot2...")
@@ -393,11 +426,11 @@ def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_da
         for t in range(0, program_args.time_step_count):
             for c in range(0, program_args.channel_count):
                 for b in range(0, program_args.baseline_count):
-                    plot_ppd_data_x[t][c][b] = math.log10(plot_ppd_data_x[t][c][b] + 1) * 10
-                    plot_ppd_data_y[t][c][b] = math.log10(plot_ppd_data_y[t][c][b] + 1) * 10
+                    plot_ppd_data_x[t][b][c] = math.log10(plot_ppd_data_x[t][b][c] + 1) * 10
+                    plot_ppd_data_y[t][b][c] = math.log10(plot_ppd_data_y[t][b][c] + 1) * 10
 
         # Get min dB value
-        min_db = 0  #min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min()) 
+        min_db = min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min())
 
     fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
@@ -406,18 +439,19 @@ def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_da
         print(f"Adding data points for plot({t})...")
 
         # Step down the dB by the min so we have a 0 base
-        if min_db != 0 :
+        if min_db != 0:
             for c in range(0, program_args.channel_count):
-                    for b in range(0, program_args.baseline_count):
-                        plot_ppd_data_x[t][c][b] = plot_ppd_data_x[t][c][b] - min_db
-                        plot_ppd_data_y[t][c][b] = plot_ppd_data_y[t][c][b] - min_db
+                for b in range(0, program_args.baseline_count):
+                    plot_ppd_data_x[t][b][c] = plot_ppd_data_x[t][b][c] - min_db
+                    plot_ppd_data_y[t][b][c] = plot_ppd_data_y[t][b][c] - min_db
 
         # Get the current plot
         plot = ax[plot_row][plot_col]
 
         # Draw this plot
-        plot.plot(plot_ppd_data_x[t], 'o', markersize=1, color='blue')
-        plot.plot(plot_ppd_data_y[t], 'o', markersize=1, color='green')
+        for b in range(0, program_args.baseline_count):
+            plot.plot(plot_ppd_data_x[t][b], 'o', markersize=1, color='blue')
+            plot.plot(plot_ppd_data_y[t][b], 'o', markersize=1, color='green')
 
         # Set labels
         if convert_to_db:
@@ -632,6 +666,8 @@ if __name__ == '__main__':
 
     parser.add_argument("-ph1", "--phaseplot_one", required=False, help="Will do a phase plot for given baseline and timesteps",
                         action='store_true')
+
+    parser.add_argument("-m", "--mode", required=True, help="How to interpret a1 and a2: RANGE or BASELINE")
 
     parser.add_argument("-w", "--weights", required=False, help="Dump the weights", action='store_true')
     args = vars(parser.parse_args())
