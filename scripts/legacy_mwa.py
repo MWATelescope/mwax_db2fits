@@ -35,7 +35,8 @@ class MWAData:
         filelist = [metafits_filename, gpubox_filename]
 
         # Read data in
-        self.UV.read_mwa_corr_fits(filelist, correct_cable_len=False, phase_data=False)
+        self.UV.read_mwa_corr_fits(filelist, correct_cable_len=False, phase_data=False,
+                                   flag_init=False, edge_width=0, flag_dc_offset=False)
 
     def info(self):
         # show frequencies
@@ -59,28 +60,29 @@ class MWAData:
             i = i + 1
 
     def get_data(self, timestep, baseline):
-        # timestep is from t1 to tN
+        # timestep is from t1 to tN or None
         # uv_data is in 4d - bl, time, freq, pol(r.i)
-        unique_times = self.UV.get_times((0, 0, 'xx'))
-        jd = unique_times[timestep - 1]  # This gets unique times for an antenna pair and polarisation
-        self.timestep_unix = jd_to_unix(jd)
-        self.timestep_datetime = jd_to_datetime(jd)
+        if timestep is None:
+            print("* All timesteps")
+            jd = None
+        else:
+            unique_times = self.UV.get_times((0, 0, 'xx'))
+            jd = unique_times[timestep - 1]  # This gets unique times for an antenna pair and polarisation
+            self.timestep_unix = jd_to_unix(jd)
+            self.timestep_datetime = jd_to_datetime(jd)
 
-        print(f"Requesting raw data for:\n"
-              f"* JD {jd} / {self.timestep_unix} / {self.timestep_datetime}")
+            print(f"Requesting raw data for:\n"
+                  f"* JD {jd} / {self.timestep_unix} / {self.timestep_datetime}")
 
-        if baseline:
+        if baseline is not None:
             print(f"* Baseline {baseline}", end=" ")
-            bl = self.get_baseline_index_by_antennas(baseline[0], baseline[1])
-            print(f" index: {bl}")
         else:
             print(f"* All antennas combined")
 
-        # self.UV.select(times=self.UV.time_array[timestep], bls=[(0, 0, 'xx')])
-        # print(self.UV.time_array)
-        # print(self.UV.baseline_array)
-        # print(self.UV.data_array)
-        self.UV.select(times=jd, bls=baseline)
+        if jd is None and baseline is None:
+            pass
+        else:
+            self.UV.select(times=jd, bls=baseline)
 
         print(f"Data now has shape: {self.UV.data_array.shape}")
 
@@ -92,15 +94,18 @@ class MWAData:
         dump_data_2D = np.reshape(uv_data, (n, self.UV.Npols))
 
         with open("mwa_legacy.csv", "w") as dump_file:
+            ch = 0
+
             for row in dump_data_2D:
-                dump_file.write("{0.real:f},{0.imag:f},"
-                                "{1.real:f},{1.imag:f},"
-                                "{2.real:f},{2.imag:f},"
-                                "{3.real:f},{3.imag:f}\n".format(row[XX], row[XY], row[YX], row[YY]))
+                dump_file.write("ch {4:3} {0.real:>10.2f},{0.imag:>10.2f} | "
+                                "{1.real:>10.2f},{1.imag:>10.2f} | "
+                                "{2.real:>10.2f},{2.imag:>10.2f} | "
+                                "{3.real:>10.2f},{3.imag:>10.2f}\n".format(row[XX], row[XY], row[YX], row[YY], ch))
+                ch = ch + 1 % self.UV.Nfreqs
 
     def plot(self, uv_data, baseline, convert_to_db):
         # uv_data is in 4d - bl, time, freq, pol(r.i)
-        # baseline = None for all or (a,b) where a and b are antenna numbers
+        # baseline = None for all or an index number
         # Produce X power and Y power
         # All baselines combined
 
@@ -126,7 +131,7 @@ class MWAData:
 
         baseline_text = "all baselines"
         if baseline:
-            baseline_text = f"{baseline[0]} vs {baseline[1]}"
+            baseline_text = f"baseline: {baseline}"
 
         ax.set_title(f"PPD Legacy MWA ({baseline_text} at {self.timestep_unix}/{self.timestep_datetime})")
         ax.set_xlabel('Fine Channel')
@@ -134,6 +139,20 @@ class MWAData:
         ax.plot(plot_array[:, 0], color='blue')
         ax.plot(plot_array[:, 1], color='green')
         plt.show()
+
+    def get_antenna_indices_from_baseline(self, baseline):
+        i = 0
+
+        for a in range(0, self.UV.Nants_data):
+            for b in range(a, self.UV.Nants_data):
+                if i == baseline:
+                    # Found
+                    return (a, b)
+
+                i = i + 1
+
+        # Not found
+        return None
 
     def get_antenna_index_by_name(self, antenna_name):
         return self.UV.antenna_names.value.index(antenna_name)
@@ -154,6 +173,7 @@ class MWAData:
 
 
 if __name__ == '__main__':
+    print("MWA Legacy data reader")
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--metafits_filename", required=False, help="metafits filename",
                         default="/home/gsleap/work/github/pyuvdata/pyuvdata/data/mwa_corr_fits_testfiles/1131733552.metafits")
@@ -162,8 +182,13 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--timestep", required=False, help="Timestep to select for plot or dump", type=int)
     parser.add_argument("-p", "--plot", required=False, help="Do a ppd plot", action='store_true')
     parser.add_argument("-d", "--dump", required=False, help="Dump data to a CSV file", action='store_true')
-    parser.add_argument("-a1", "--antenna1", required=False, help="Antenna1 to select for plot or dump", type=int)
-    parser.add_argument("-a2", "--antenna2", required=False, help="Antenna2 to select for plot or dump", type=int)
+    parser.add_argument("-s", "--sum", required=False, help="Sum this timestep", action='store_true')
+    parser.add_argument("-a1", "--antenna1", required=False,
+                        help="Antenna1 to select for plot or dump (not valid with b)", type=int)
+    parser.add_argument("-a2", "--antenna2", required=False,
+                        help="Antenna2 to select for plot or dump (not valid with b)", type=int)
+    parser.add_argument("-b", "--baseline", required=False,
+                        help="Baseline to select for plot or dump (not valid with a1 and a2)", type=int)
     args = vars(parser.parse_args())
 
     arg_metafits_file = args["metafits_filename"]
@@ -172,23 +197,38 @@ if __name__ == '__main__':
     arg_timestep = args["timestep"]
     arg_plot = args["plot"]
     arg_dump = args["dump"]
+    arg_sum = args["sum"]
     arg_a1 = args["antenna1"]
     arg_a2 = args["antenna2"]
+    arg_bl = args["baseline"]
 
-    if arg_a1 is None or arg_a2 is None:
-        arg_baseline = None
-    else:
-        arg_baseline = (arg_a1, arg_a2)
-
+    print("Initialising MWAData...", end="")
     data = MWAData(arg_metafits_file, arg_gpubox_file)
+    print("...done!")
 
     # Get info no matter what
+    print("Retrieving info...", end="")
     data.info()
+    print("...done!")
 
-    if arg_timestep is None or (arg_plot is False and arg_dump is False):
+    if arg_a1 is None and arg_a2 is None and arg_bl is not None:
+        bl = data.get_antenna_indices_from_baseline(arg_bl)
+
+    elif arg_a1 is not None and arg_a2 is not None and arg_bl is None:
+        bl = (arg_a1, arg_a2)
+
+    else:
+        bl = None
+
+    if bl is None and arg_timestep is None and arg_sum is True:
+        print("Summing data only")
+        dump_data = data.get_data(None, None)
+    elif arg_timestep is None or (arg_plot is False and arg_dump is False and arg_sum is False):
         print("No timestep provided, will show basic info only.")
     else:
-        dump_data = data.get_data(arg_timestep, arg_baseline)
+        print("Selecting specific data...", end="")
+        dump_data = data.get_data(arg_timestep, bl)
+        print("...done!")
 
         if arg_dump:
             print("Dumping to CSV file...")
@@ -199,6 +239,11 @@ if __name__ == '__main__':
             #for i in range(0, 10):
             #    for j in range(i, 10):
             #        data.plot(dump_data, (i, j))
-            data.plot(dump_data, arg_baseline, convert_to_db=True)
+            data.plot(dump_data, bl, convert_to_db=True)
+
+    if arg_sum:
+        sum_of_data = dump_data.sum()
+
+        print(f"Sum of data requested is: {sum_of_data.real + sum_of_data.imag}")
 
     print("Complete")
