@@ -36,7 +36,7 @@ class MWAData:
 
         # Read data in
         self.UV.read_mwa_corr_fits(filelist, correct_cable_len=False, phase_data=False,
-                                   flag_init=False, edge_width=0, flag_dc_offset=False)
+                                   flag_init=False, )
 
     def info(self):
         # show frequencies
@@ -89,18 +89,17 @@ class MWAData:
         return self.UV.data_array
 
     def dump(self, uv_data):
-        n = self.UV.Nfreqs * self.UV.Nbls
-
-        dump_data_2D = np.reshape(uv_data, (n, self.UV.Npols))
+        dump_data_2D = np.reshape(uv_data, (self.UV.Nfreqs * self.UV.Nbls, self.UV.Npols))
+        print(f"Dumping data in the shape {np.shape(dump_data_2D)}")
 
         with open("mwa_legacy.csv", "w") as dump_file:
             ch = 0
 
             for row in dump_data_2D:
-                dump_file.write("ch {4:3} {0.real:>10.2f},{0.imag:>10.2f} | "
-                                "{1.real:>10.2f},{1.imag:>10.2f} | "
-                                "{2.real:>10.2f},{2.imag:>10.2f} | "
-                                "{3.real:>10.2f},{3.imag:>10.2f}\n".format(row[XX], row[XY], row[YX], row[YY], ch))
+                dump_file.write(f"{row[XX].real},{row[XX].imag},"
+                                f"{row[XY].real},{row[XY].imag},"
+                                f"{row[YX].real},{row[YX].imag},"
+                                f"{row[YY].real},{row[YY].imag}\n")
                 ch = ch + 1 % self.UV.Nfreqs
 
     def plot(self, uv_data, baseline, convert_to_db):
@@ -140,6 +139,10 @@ class MWAData:
         ax.plot(plot_array[:, 1], color='green')
         plt.show()
 
+    def clear_flags(self):
+        print(self.UV.flag_array.shape)
+        self.UV.flag_array.fill(False)
+
     def get_antenna_indices_from_baseline(self, baseline):
         i = 0
 
@@ -155,7 +158,15 @@ class MWAData:
         return None
 
     def get_antenna_index_by_name(self, antenna_name):
-        return self.UV.antenna_names.value.index(antenna_name)
+        index = 0
+        print(f"Looking for {antenna_name}")
+        for a in self.UV.antenna_names:
+            if a == antenna_name:
+                return index
+            index += 1
+
+        print("Not found :(")
+        return -1
 
     def get_baseline_index_by_antennas(self, ant1, ant2):
         i = 0
@@ -183,10 +194,10 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--plot", required=False, help="Do a ppd plot", action='store_true')
     parser.add_argument("-d", "--dump", required=False, help="Dump data to a CSV file", action='store_true')
     parser.add_argument("-s", "--sum", required=False, help="Sum this timestep", action='store_true')
-    parser.add_argument("-a1", "--antenna1", required=False,
-                        help="Antenna1 to select for plot or dump (not valid with b)", type=int)
-    parser.add_argument("-a2", "--antenna2", required=False,
-                        help="Antenna2 to select for plot or dump (not valid with b)", type=int)
+    parser.add_argument("-a1", "--ant1-name", required=False,
+                        help="Antenna1 to select for plot or dump (not valid with b)", type=str)
+    parser.add_argument("-a2", "--ant2-name", required=False,
+                        help="Antenna2 to select for plot or dump (not valid with b)", type=str)
     parser.add_argument("-b", "--baseline", required=False,
                         help="Baseline to select for plot or dump (not valid with a1 and a2)", type=int)
     args = vars(parser.parse_args())
@@ -198,8 +209,8 @@ if __name__ == '__main__':
     arg_plot = args["plot"]
     arg_dump = args["dump"]
     arg_sum = args["sum"]
-    arg_a1 = args["antenna1"]
-    arg_a2 = args["antenna2"]
+    arg_a1 = args["ant1_name"]
+    arg_a2 = args["ant2_name"]
     arg_bl = args["baseline"]
 
     print("Initialising MWAData...", end="")
@@ -211,20 +222,51 @@ if __name__ == '__main__':
     data.info()
     print("...done!")
 
+    selected_baseline_index = -1
+
     if arg_a1 is None and arg_a2 is None and arg_bl is not None:
         bl = data.get_antenna_indices_from_baseline(arg_bl)
+        ant1_index = bl[0]
+        ant2_index = bl[1]
+        ant1_name = data.UV.antenna_names[ant1_index]
+        ant2_name = data.UV.antenna_names[ant2_index]
+        selected_baseline_index = arg_bl
+
+        print(f"{ant1_index} {ant2_index} {bl} {selected_baseline_index}")
 
     elif arg_a1 is not None and arg_a2 is not None and arg_bl is None:
-        bl = (arg_a1, arg_a2)
+        ant1_name = arg_a1
+        ant2_name = arg_a2
 
+        ant1_index = data.get_antenna_index_by_name(arg_a1)
+        ant2_index = data.get_antenna_index_by_name(arg_a2)
+
+        bl = (ant1_index, ant2_index)
+
+        selected_baseline_index = data.get_baseline_index_by_antennas(ant1_index, ant2_index)
+
+        print(f"{ant1_index} {ant2_index} {bl} {selected_baseline_index}")
     else:
         bl = None
 
-    if bl is None and arg_timestep is None and arg_sum is True:
+    if arg_timestep is None and arg_sum is True:
         print("Summing data only")
         dump_data = data.get_data(None, None)
+        count_of_data = 0
+        sum_of_data = 0
+
+        for blt in dump_data:
+            for spw in blt:
+                for f in spw:
+                    for p in f:
+                        count_of_data += 2
+                        sum_of_data += p.real + p.imag
+
+        print(f"Pyuvdata Sum: {sum_of_data}; Count: {count_of_data}")
+
     elif arg_timestep is None or (arg_plot is False and arg_dump is False and arg_sum is False):
         print("No timestep provided, will show basic info only.")
+
     else:
         print("Selecting specific data...", end="")
         dump_data = data.get_data(arg_timestep, bl)
@@ -240,10 +282,5 @@ if __name__ == '__main__':
             #    for j in range(i, 10):
             #        data.plot(dump_data, (i, j))
             data.plot(dump_data, bl, convert_to_db=True)
-
-    if arg_sum:
-        sum_of_data = dump_data.sum()
-
-        print(f"Sum of data requested is: {sum_of_data.real + sum_of_data.imag}")
 
     print("Complete")

@@ -22,16 +22,25 @@ def dump(filename):
 
         rf_list.append((rf_order, row["Antenna"], row["Pol"], row["Tile"], row["TileName"]))
 
-    rf_list.sort()
-    tile_list.sort()
+    #rf_list.sort()
+    #tile_list.sort()
 
-    print("Order, Tile, TileName")
-    for tile in tile_list:
-        print(tile)
+    print("Input, Antenna, TileName, Pol, VCS_ORDER, Rx, VCS Order, Calc VCS Order, Subfile order, Flag?")
+    #for tile in tile_list:
+    #    print(tile)
 
     for x in fits_hdu_list[1].data:
         #x[8]="EL_0"
-        print(x[8])
+        try:
+           vcs_order = x["VCSOrder"]
+        except:
+           vcs_order = -1
+
+        inum = x["Input"] 
+        bob = (inum & 0xC0) | ((inum & 0x30) >> 4) | ((inum & 0x0F) << 2)
+        bob2 = ((inum) & 0xc0) | (((inum) & 0x03) << 4) | (((inum) & 0x3c) >> 2)
+        subfile_order = (x["Antenna"] << 1) + (1 if x["Pol"]=="Y" else 0)
+        print(f'{x["Input"]}, {x["Antenna"]}, {x["TileName"]}, {x["Pol"]},{x["Rx"]}, {vcs_order}, {bob2}, {subfile_order}, {x["Flag"]}')
 
     # clean up
     fits_hdu_list.close()
