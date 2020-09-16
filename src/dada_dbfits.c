@@ -47,21 +47,21 @@ int dada_dbfits_open(dada_client_t* client)
   {
     multilog(log, LOG_INFO, "dada_dbfits_open(): %s == %s\n", HEADER_MODE, ctx->mode);
 
-    if (is_mwax_mode_correlator(ctx->mode) == 0)
+    if (is_mwax_mode_correlator(ctx->mode) == 1)
     {
       // Normal operations      
     }      
-    else if(is_mwax_mode_vcs(ctx->mode) == 0)
+    else if(is_mwax_mode_vcs(ctx->mode) == 1)
     {
       // Voltage_Start - don't correlate 
       return EXIT_SUCCESS;
     }
-    else if(is_mwax_mode_no_capture(ctx->mode) == 0)
+    else if(is_mwax_mode_no_capture(ctx->mode) == 1)
     {
       // don't correlate 
       return EXIT_SUCCESS;
     }
-    else if (is_mwax_mode_quit(ctx->mode) == 0)
+    else if (is_mwax_mode_quit(ctx->mode) == 1)
     {
       // We'll flag we want to quit
       set_quit(1);
@@ -427,11 +427,10 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
 {
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
+  multilog_t * log = (multilog_t *) ctx->log;
 
-  if (is_mwax_mode_correlator(ctx->mode) == 0)
-  {
-    multilog_t * log = (multilog_t *) ctx->log;
-    
+  if (is_mwax_mode_correlator(ctx->mode) == 1)
+  {        
     uint64_t written  = 0;
     uint64_t to_write = bytes;
     uint64_t wrote    = 0;
@@ -509,7 +508,10 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     return bytes;
   }  
   else
+  {
+    multilog(log, LOG_WARNING, "dada_dbfits_io(): Unknown mode %s; (ignoring).\n", ctx->mode);
     return 0;
+  }
 }
 
 /**
@@ -616,17 +618,19 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
 {
   assert (client != 0);
   dada_db_s* ctx = (dada_db_s*) client->context;
+  multilog_t * log = (multilog_t *) ctx->log;
 
-  if (is_mwax_mode_correlator(ctx->mode) == 0)
-  {
-    multilog_t * log = (multilog_t *) ctx->log;
-
+  if (is_mwax_mode_correlator(ctx->mode) == 1)
+  {    
     multilog(log, LOG_INFO, "dada_dbfits_io_block(): Processing block id %llu\n", block_id);
 
     return dada_dbfits_io(client, buffer, bytes);
   }
   else    
+  {
+    multilog(log, LOG_WARNING, "dada_dbfits_io_block(): Unknown mode %s; (ignoring).\n", ctx->mode);
     return bytes;
+  }
 }
 
 /**
@@ -648,7 +652,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   int do_close_fits = 0;
 
   // If we're still in CAPTURE mode...
-  if (is_mwax_mode_correlator(ctx->mode) == 0)
+  if (is_mwax_mode_correlator(ctx->mode) == 1)
   {
     // Some sanity checks:
     int current_duration = (int)((float)(ctx->obs_marker_number) * ((float)ctx->int_time_msec / 1000.0));
@@ -681,6 +685,7 @@ int dada_dbfits_close(dada_client_t* client, uint64_t bytes_written)
   }
   else
   {
+    multilog(log, LOG_WARNING, "dada_dbfits_close(): Unknown mode %s; (ignoring).\n", ctx->mode);
     do_close_fits = 1;
   }
 
