@@ -22,7 +22,6 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wextra")    
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 add_executable(mwax_db2fits ${PROGSRC})       # define executable target prog, specify sources
