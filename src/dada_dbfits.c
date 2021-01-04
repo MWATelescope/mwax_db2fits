@@ -340,7 +340,7 @@ int dada_dbfits_open(dada_client_t* client)
     sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);    
       
     /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_chCCC_FFF.fits */
-    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%02d_%003d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%03d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
     
     if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename)) 
     {
