@@ -3,8 +3,10 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from pymwalib.context import Context
 
-dpi = 100
+
+dpi = 300
 MODE_RANGE = "RANGE"
 MODE_BASELINE = "BASELINE"
 
@@ -12,6 +14,7 @@ MODE_BASELINE = "BASELINE"
 class ViewFITSArgs:
     def __init__(self, passed_args):
         self.filename = passed_args["filename"]
+        self.metafits_filename = passed_args["metafits"]
 
         self.time_step1 = passed_args["timestep1"]
         self.time_step2 = passed_args["timestep2"]
@@ -38,19 +41,20 @@ class ViewFITSArgs:
                              self.phase_plot_all or self.phase_plot_one)
 
         # Some constants not found in fits file
-        self.values = 2     # real and imaginary
-        self.pols = 4       # xx,xy,yx,yy
+        self.values = 2  # real and imaginary
 
         # Read fits file
-        print(f"Opening fits file {self.filename}...")
-        self.fits_hdu_list = fits.open(self.filename)
+        print(f"Opening with pymwalib using metafits file {self.metafits_filename} and data file {self.filename}...")
+        self.context = Context(self.metafits_filename, [self.filename,])
+
+        self.pols = self.context.num_visibility_pols  # xx,xy,yx,yy
 
         # in v2 NAXIS1 == fine channels * pols * r,i
         # in v2 NAXIS2 == baselines
         # Get number of tiles based on the number of signal chains
-        self.fits_tiles = int(self.fits_hdu_list[0].header["NINPUTS"] / 2)
-        chan_x_pols_x_vals = self.fits_hdu_list[1].header["NAXIS1"]
-        self.fits_channels = int((chan_x_pols_x_vals / self.pols) / self.values)
+        self.fits_tiles = len(self.context.antennas)
+        self.chan_x_pols_x_vals = self.context.num_fine_channels_per_coarse * self.pols * self.values
+        self.fits_channels = self.context.num_fine_channels_per_coarse
         self.fits_has_weights = True
 
         # Check mode
@@ -78,11 +82,7 @@ class ViewFITSArgs:
             exit(-1)
 
         # Check time steps
-        if self.fits_has_weights:
-            # Count = hdus minus primary divided by 2 (we have data then weights)
-            self.fits_time_steps = int((len(self.fits_hdu_list) - 1) / 2)
-        else:
-            self.fits_time_steps = len(self.fits_hdu_list) - 1
+        self.fits_time_steps = self.context.num_timesteps
 
         if self.time_step1 == -1:
             self.time_step1 = 1
@@ -133,13 +133,11 @@ class ViewFITSArgs:
         self.channel_count = self.channel2 - self.channel1 + 1
         self.time_step_count = self.time_step2 - self.time_step1 + 1
 
-        self.hdu_time1 = (self.time_step1 * 2) - 1  # e.g. t2 = 2*2 -1 = 3
-        self.unix_time1 = self.fits_hdu_list[self.hdu_time1].header["TIME"] + \
-                          (self.fits_hdu_list[self.hdu_time1].header["MILLITIM"] / 1000)
+        self.hdu_time1 = self.time_step1 - 1
+        self.unix_time1 = self.context.timesteps[self.hdu_time1].unix_time_ms / 1000.
 
-        self.hdu_time2 = (self.time_step2 * 2) - 1
-        self.unix_time2 = self.fits_hdu_list[self.hdu_time2].header["TIME"] + \
-                          (self.fits_hdu_list[self.hdu_time2].header["MILLITIM"] / 1000)
+        self.hdu_time2 = self.time_step2 - 1
+        self.unix_time2 = self.context.timesteps[self.hdu_time2].unix_time_ms / 1000.
 
         # print params
         self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} " \
@@ -192,40 +190,30 @@ def peek_fits(program_args: ViewFITSArgs):
     time_step_list = []
     weight_list = []
 
-    # hdu 0 is primary
-    if program_args.fits_has_weights:
-        # hdu's then alternate between data and weghts. e.g. d,w,d,w, etc
-        for h in range((program_args.time_step1 * 2)-1, ((program_args.time_step2 + 1) * 2) - 1, 2):
-            print(f"Adding HDU {h} to data HDUs")
-            time_step_list.append(program_args.fits_hdu_list[h])
-
-        for h_weights in range(program_args.time_step1 * 2, (program_args.time_step2 + 1) * 2, 2):
-            print(f"Adding HDU {h_weights} to weights HDUs")
-            weight_list.append(program_args.fits_hdu_list[h_weights])
-    else:
-        for h in range(program_args.time_step1, (program_args.time_step2 + 1)):
-            print(f"Adding HDU {h} to data HDUs")
-            time_step_list.append(program_args.fits_hdu_list[h])
-
     # print the header of each HDU, including the primary
-    print("Primary HDU:\n")
-    print(repr(program_args.fits_hdu_list[0].header))
+    #print("Primary HDU:\n")
+    #print(repr(program_args.fits_hdu_list[0].header))
 
     # print a csv header if we're not plotting
     if not program_args.any_plotting:
         #print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power_x, power_y")
         print("xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i")
 
-    time_index = 0
-
     if not program_args.any_plotting:
         dump_file = open("mwax_dump.csv", "w")
 
-    for hdu in time_step_list:
-        time = hdu.header["MARKER"] + 1
-        print(f"Processing timestep: {time} (time index: {time_index})...")
+    for timestep_index, timestep in enumerate(program_args.context.timesteps):
+        time_index = timestep_index - program_args.hdu_time1
 
-        data = np.array(hdu.data, dtype=float)
+        print(f"Processing timestep: {timestep.index} (time index: {time_index})...")
+        if timestep_index < program_args.hdu_time1 or timestep_index > program_args.hdu_time2:
+            print(f"Skipping timestep index {timestep_index} (out of range)")
+            continue
+
+        # Read data
+        data = program_args.context.read_by_baseline(timestep.index,
+                                                     0)
+        data = data.reshape(program_args.context.num_baselines, program_args.chan_x_pols_x_vals)
 
         baseline = 0
         selected_baseline = 0
@@ -233,9 +221,6 @@ def peek_fits(program_args: ViewFITSArgs):
         #
         # Correlator v2
         #
-        print("HDU header for this timestep:")
-        print(repr(hdu.header))
-
         # was:
         # for i in range(0, program_args.tile2 + 1):
         #   for j in range(i, program_args.fits_tiles):
@@ -248,7 +233,7 @@ def peek_fits(program_args: ViewFITSArgs):
                 if ((i == j and program_args.autos_only is True) or
                    (program_args.autos_only is False)) and \
                    (meets_criteria(i, j, program_args.tile1, program_args.tile2, program_args.mode)):
-                    print(f"t {time}, baseline {baseline}, {i}, {j}")
+                    print(f"t {time_index}, baseline {baseline}, {i}, {j}")
 
                     for chan in range(program_args.channel1, program_args.channel2 + 1):
                         index = chan * (program_args.pols * program_args.values)
@@ -300,7 +285,6 @@ def peek_fits(program_args: ViewFITSArgs):
 
                 baseline = baseline + 1
 
-        time_index = time_index + 1
         print(" done!")
 
     if not program_args.any_plotting:
@@ -323,10 +307,6 @@ def peek_fits(program_args: ViewFITSArgs):
                         print(f"{time} {baseline} {i} v {j}: {w_xx}, {w_xy}, {w_yx}, {w_yy}")
 
                 baseline = baseline + 1
-
-    # clean up
-    print("Done.\nClosing fits file")
-    program_args.fits_hdu_list.close()
 
     if program_args.ppd_plot:
         convert_to_db = True
@@ -366,7 +346,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
         # Get min dB value
         min_db = 0 # min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min())
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
+    fig, ax = plt.subplots(figsize=(20, 10),nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for t in range(0, program_args.time_step_count):
@@ -393,7 +373,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
         plot.set_xlabel("fine channel", size=6)
 
         # Set plot title
-        plot.set_title(f"t={t + program_args.unix_time1}", size=6)
+        plot.set_title(f"t={program_args.unix_time1 + (t * (program_args.context.integration_time_milliseconds / 1000.))}", size=6)
 
         # Increment so we know which plot we are on
         if plot_col < plot_cols - 1:
@@ -432,7 +412,7 @@ def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_da
         # Get min dB value
         min_db = min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min())
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
+    fig, ax = plt.subplots(figsize=(20, 10), nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for t in range(0, program_args.time_step_count):
@@ -489,20 +469,20 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     plot_row = 0
     plot_col = 0
 
-    if 0 == 1:
+    if 1==1:
         for time_index in range(0, program_args.time_step_count):
             for t1 in range(0, program_args.tile_count):
                 for t2 in range(t1, program_args.tile_count):
                     plot_grid_data[time_index][t2][t1] = math.log10(plot_grid_data[time_index][t2][t1] + 1) * 10
 
         # Get min dB value
-        np_array_nonzero = plot_grid_data[plot_grid_data > 1]
-        min_db = np_array_nonzero.min()
+        #np_array_nonzero = plot_grid_data[plot_grid_data > 1]
+        #min_db = np_array_nonzero.min()
 
         # Apply min_db but only to values > 1
-        plot_grid_data = np.where(plot_grid_data > 1, plot_grid_data - min_db, plot_grid_data)
+        #plot_grid_data = np.where(plot_grid_data > 1, plot_grid_data - min_db, plot_grid_data)
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
+    fig, ax = plt.subplots(figsize=(30, 30), nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     n_step = math.ceil(plots / 1.25)
@@ -514,9 +494,9 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
         n_step = n_step - 2
 
     if n_step <= 1:
-        n_step = 2
+        n_step = 1
     else:
-        n_step = n_step * 2 
+        n_step = n_step * 2
 
     if n_step > 16:
         n_step = 16
@@ -548,7 +528,7 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
         if plot_row == plot_rows - 1:
             plot.set_xlabel("ant1", size=6)
 
-        plt.setp(plot.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+        plt.setp(plot.get_xticklabels(), rotation=90, ha="right", va="center", rotation_mode="anchor")
 
         # Increment so we know which plot we are on
         if plot_col < plot_cols - 1:
@@ -567,7 +547,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     print("Preparing phase plot...")
     print(f"Timesteps: {program_args.time_step_count}, tiles: {program_args.tile_count}, channels: {program_args.channel_count}")
 
-    # Work out layout of plots 
+    # Work out layout of plots
     if program_args.phase_plot_one:
         plots = 1
     else:
@@ -579,7 +559,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     plot_col = 0
     baseline = 0
 
-    fig, ax = plt.subplots(nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
+    fig, ax = plt.subplots(figsize=(20, 10), nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for i in range(0, program_args.tile_count):
@@ -587,8 +567,8 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
             if program_args.phase_plot_one:
                print(f"{i} vs {j}")
                if not (i == 0 and j == (program_args.tile_count - 1)):
-                   # skip this plot 
-                   print("skip") 
+                   # skip this plot
+                   print("skip")
                    baseline = baseline + 1
                    continue
             else:
@@ -604,6 +584,13 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
             # Do plots
             for t in range(0, program_args.time_step_count):
+                print(program_args.context.num_timesteps)
+                print(f"Time {t}")
+                print("X")
+                print(plot_phase_data_x[t][baseline])
+                print("Y")
+                print(plot_phase_data_y[t][baseline])
+
                 plot.plot(channel_list, plot_phase_data_x[t][baseline], 'o', markersize=3, color='blue')
                 plot.plot(channel_list, plot_phase_data_y[t][baseline], 'o', markersize=3, color='green')
 
@@ -641,6 +628,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", help="fits filename")
+    parser.add_argument("-m", "--metafits", required=True, help="Path to the metafits file.")
     parser.add_argument("-t1", "--timestep1", required=False, help="timestep start (1 based index)",
                         default=1, type=int)
     parser.add_argument("-t2", "--timestep2", required=False, help="timestep end (defaults to last index)",
@@ -667,7 +655,7 @@ if __name__ == '__main__':
     parser.add_argument("-ph1", "--phaseplot_one", required=False, help="Will do a phase plot for given baseline and timesteps",
                         action='store_true')
 
-    parser.add_argument("-m", "--mode", required=True, help="How to interpret a1 and a2: RANGE or BASELINE")
+    parser.add_argument("-o", "--mode", required=True, help="How to interpret a1 and a2: RANGE or BASELINE")
 
     parser.add_argument("-w", "--weights", required=False, help="Dump the weights", action='store_true')
     args = vars(parser.parse_args())
@@ -675,3 +663,11 @@ if __name__ == '__main__':
     parsed_args = ViewFITSArgs(args)
 
     peek_fits(parsed_args)
+
+    print("Dumping Antennas:")
+    for a_index, a in enumerate(parsed_args.context.antennas):
+        print(a_index, a.antenna, a.tile_id, a.tile_name)
+
+    print("Dumping RF Inputs:")
+    for r_index, r in enumerate(parsed_args.context.rf_inputs):
+        print(r)
