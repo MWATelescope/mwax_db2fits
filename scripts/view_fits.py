@@ -664,10 +664,3 @@ if __name__ == '__main__':
 
     peek_fits(parsed_args)
 
-    print("Dumping Antennas:")
-    for a_index, a in enumerate(parsed_args.context.antennas):
-        print(a_index, a.antenna, a.tile_id, a.tile_name)
-
-    print("Dumping RF Inputs:")
-    for r_index, r in enumerate(parsed_args.context.rf_inputs):
-        print(r)
