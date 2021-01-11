@@ -3,7 +3,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-from pymwalib.context import Context
+from pymwalib.context import Context, CorrelatorVersion
 
 
 dpi = 300
@@ -30,6 +30,8 @@ class ViewFITSArgs:
         self.ppd_plot = passed_args["ppdplot"]
         self.ppd_plot2 = passed_args["ppdplot2"]
         self.grid_plot = passed_args["gridplot"]
+        self.grid_plot2 = passed_args["gridplot2"]
+        self.grid_pol = passed_args["gridpol"]
         self.phase_plot_all = passed_args["phaseplot_all"]
         self.phase_plot_one = passed_args["phaseplot_one"]
 
@@ -47,6 +49,7 @@ class ViewFITSArgs:
         print(f"Opening with pymwalib using metafits file {self.metafits_filename} and data file {self.filename}...")
         self.context = Context(self.metafits_filename, [self.filename,])
 
+        self.correlator_version: CorrelatorVersion = self.context.corr_version
         self.pols = self.context.num_visibility_pols  # xx,xy,yx,yy
 
         # in v2 NAXIS1 == fine channels * pols * r,i
@@ -140,12 +143,20 @@ class ViewFITSArgs:
         self.unix_time2 = self.context.timesteps[self.hdu_time2].unix_time_ms / 1000.
 
         # print params
-        self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} " \
-                            f"t_hdu={self.hdu_time1}-{self.hdu_time2} \n" \
-                            f"t_unix={self.unix_time1}-{self.unix_time2} " \
-                            f"tile={self.tile1}-{self.tile2} " \
-                            f"ch={self.channel1}-{self.channel2} autosonly?={self.autos_only} " \
-                            f"{self.tile_count}t/{self.fits_tiles}t"
+        if self.grid_plot2:
+            self.param_string = f"[{self.grid_pol}] {self.filename} t={self.time_step1}-{self.time_step2} " \
+                                f"t_hdu={self.hdu_time1}-{self.hdu_time2} \n" \
+                                f"t_unix={self.unix_time1}-{self.unix_time2} " \
+                                f"tile={self.tile1}-{self.tile2} " \
+                                f"ch={self.channel1}-{self.channel2} autosonly?={self.autos_only} " \
+                                f"{self.tile_count}t/{self.fits_tiles}t"
+        else:
+            self.param_string = f"{self.filename} t={self.time_step1}-{self.time_step2} " \
+                                f"t_hdu={self.hdu_time1}-{self.hdu_time2} \n" \
+                                f"t_unix={self.unix_time1}-{self.unix_time2} " \
+                                f"tile={self.tile1}-{self.tile2} " \
+                                f"ch={self.channel1}-{self.channel2} autosonly?={self.autos_only} " \
+                                f"{self.tile_count}t/{self.fits_tiles}t"
         print(self.param_string)
 
 
@@ -180,6 +191,10 @@ def peek_fits(program_args: ViewFITSArgs):
     plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
     plot_grid_data.fill(0)
 
+    # Grid plot 2 array
+    plot_grid2_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
+    plot_grid2_data.fill(0)
+
     # Phase plot
     plot_phase_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
     plot_phase_data_x.fill(0)
@@ -187,7 +202,6 @@ def peek_fits(program_args: ViewFITSArgs):
     plot_phase_data_y.fill(0)
 
     # create a list of the hdus we want
-    time_step_list = []
     weight_list = []
 
     # print the header of each HDU, including the primary
@@ -250,19 +264,35 @@ def peek_fits(program_args: ViewFITSArgs):
                         yy_r = data[baseline][index + 6]
                         yy_i = data[baseline][index + 7]
 
-                        power_x = math.sqrt(xx_i*xx_i + xx_r*xx_r)
-                        power_y = math.sqrt(yy_i*yy_i + yy_r*yy_r)
+                        power_xx = xx_i * xx_i + xx_r * xx_r
+                        power_xy = xy_i * xy_i + xy_r * xy_r
+                        power_yx = yx_i * yx_i + yx_r * yx_r
+                        power_yy = yy_i * yy_i + yy_r * yy_r
 
                         if program_args.ppd_plot:
-                            plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_x
-                            plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_y
+                            plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_xx
+                            plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_yy
 
                         elif program_args.ppd_plot2:
-                            plot_ppd2_data_x[time_index][selected_baseline][chan] = power_x
-                            plot_ppd2_data_y[time_index][selected_baseline][chan] = power_y
+                            plot_ppd2_data_x[time_index][selected_baseline][chan] = power_xx
+                            plot_ppd2_data_y[time_index][selected_baseline][chan] = power_yy
 
                         elif program_args.grid_plot:
-                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_x + power_y
+                            plot_grid_data[time_index][j][i] = plot_grid_data[time_index][j][i] + power_xx + power_yy
+
+                        elif program_args.grid_plot2:
+                            # offset index by the polarisation
+                            if program_args.grid_pol == "XX":
+                                plot_grid2_data[time_index][j][i] += power_xx
+                            elif program_args.grid_pol == "XY":
+                                plot_grid2_data[time_index][j][i] += power_xy
+                            elif program_args.grid_pol == "YX":
+                                plot_grid2_data[time_index][j][i] += power_yx
+                            elif program_args.grid_pol == "YY":
+                                plot_grid2_data[time_index][j][i] += power_yy
+                            else:
+                                print("Grid Plot requires you to specify -gp (--gridpol) and takes XX,XY,YX,YY as parameters")
+                                exit(-1)
 
                         elif program_args.phase_plot_all or program_args.phase_plot_one:
                             phase_x = math.degrees(math.atan2(xx_i, xx_r))
@@ -318,6 +348,9 @@ def peek_fits(program_args: ViewFITSArgs):
 
     if program_args.grid_plot:
         do_grid_plot(program_args.param_string, program_args, plot_grid_data)
+
+    if program_args.grid_plot2:
+        do_grid_plot2(program_args.param_string, program_args, plot_grid2_data)
 
     if program_args.phase_plot_all or program_args.phase_plot_one:
         do_phase_plot(program_args.param_string, program_args, plot_phase_data_x, plot_phase_data_y)
@@ -543,6 +576,88 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
     plt.show()
 
 
+def do_grid_plot2(title, program_args: ViewFITSArgs, plot_grid_data):
+    print("Preparing grid plot2...")
+
+    # Work out layout of plots
+    plots = program_args.time_step_count
+    plot_rows = math.floor(math.sqrt(plots))
+    plot_cols = math.ceil(plots / plot_rows)
+    plot_row = 0
+    plot_col = 0
+
+    # Determine scaling value
+    scaling_value: float = np.max(plot_grid_data)
+
+    # Apply log10 and scaling value
+    for time_index in range(0, program_args.time_step_count):
+        for t1 in range(0, program_args.tile_count):
+            for t2 in range(t1, program_args.tile_count):
+                value: float = plot_grid_data[time_index][t2][t1] / scaling_value
+                try:
+                    if abs(value) < 0.0000001:
+                        plot_grid_data[time_index][t2][t1] = 0
+                    else:
+                        plot_grid_data[time_index][t2][t1] = math.log10(value * 10000000)
+                except Exception as e:
+                    print(f"Exception trying math.log10({value * 10000000} / {scaling_value})")
+                    raise e
+
+    # Now print some stats
+    print(f"scaling value was: {scaling_value}; now scaled and log10'd-> min = {np.min(plot_grid_data)}; max = {np.max(plot_grid_data)}")
+
+    fig, ax = plt.subplots(figsize=(30, 30), nrows=plot_rows, ncols=plot_cols, squeeze=False, sharex="all", sharey="all", dpi=dpi)
+    fig.suptitle(title)
+
+    n_step = 1
+
+    for time_index in range(0, program_args.time_step_count):
+        #for t1 in range(0, program_args.tile_count):
+        #    for t2 in range(t1, program_args.tile_count):
+        #        print(time_index, program_args.tile1 + t1, program_args.tile1 + t2, plot_grid_data[time_index][t2][t1])
+
+        print(f"Adding data points for plot({time_index})...")
+
+        # Get the current plot
+        plot = ax[plot_row][plot_col]
+
+        plot.imshow(plot_grid_data[time_index], cmap="inferno", interpolation="None")
+
+        plot.set_title(f"t={time_index+program_args.time_step1}", size=6)
+        plot.set_xticks(np.arange(program_args.tile_count, step=n_step))
+        plot.set_yticks(np.arange(program_args.tile_count, step=n_step))
+        plot.set_xticklabels(np.arange(program_args.tile1, program_args.tile2 + 1, step=n_step))
+        plot.set_yticklabels(np.arange(program_args.tile1, program_args.tile2 + 1, step=n_step))
+
+        # Set labels
+        # Only do y label for first col
+        if plot_col == 0:
+            plot.set_ylabel("ant2", size=6)
+
+        # Only do x label for final row
+        if plot_row == plot_rows - 1:
+            plot.set_xlabel("ant1", size=6)
+
+        plt.setp(plot.get_xticklabels(), rotation=90, ha="right", va="center", rotation_mode="anchor")
+
+        # Increment so we know which plot we are on
+        if plot_col < plot_cols - 1:
+            plot_col = plot_col + 1
+        else:
+            plot_row = plot_row + 1
+            plot_col = 0
+
+    print("Saving figure...")
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"grid_plot2_{program_args.grid_pol}_mwax.png"
+    else:
+        filename = f"grid_plot2_{program_args.grid_pol}_mwa.png"
+
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    print(f"saved {filename}")
+    plt.show()
+
+
 def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_phase_data_y):
     print("Preparing phase plot...")
     print(f"Timesteps: {program_args.time_step_count}, tiles: {program_args.tile_count}, channels: {program_args.channel_count}")
@@ -649,6 +764,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument("-g", "--gridplot", required=False, help="Create a grid / baseline plot",
                         action='store_true')
+    parser.add_argument("-g2", "--gridplot2", required=False, help="Create a grid / baseline plot but show a single pol (XX,XY,YX,YY) for each tile. Use gridpol to specify",
+                        action='store_true')
+    parser.add_argument("-gp", "--gridpol", required=False, help="If gridplot2 used, use this to specify the pol. Default is 'XX'",
+                        default="XX")
     parser.add_argument("-ph", "--phaseplot_all", required=False, help="Will do a phase plot for all baselines for given antennas and timesteps",
                         action='store_true')
 
