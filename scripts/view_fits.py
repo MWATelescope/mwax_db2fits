@@ -34,13 +34,18 @@ class ViewFITSArgs:
         self.grid_pol = passed_args["gridpol"]
         self.phase_plot_all = passed_args["phaseplot_all"]
         self.phase_plot_one = passed_args["phaseplot_one"]
-
-        self.weights = passed_args["weights"]
         self.mode = passed_args["mode"]
+
+        self.dumpraw = passed_args["dump_raw"]
+        self.dumpplot = passed_args["dump_plot"]
 
         # Are we plotting?
         self.any_plotting = (self.ppd_plot or self.ppd_plot2 or self.grid_plot or
                              self.phase_plot_all or self.phase_plot_one)
+
+        if not self.any_plotting and self.dumpplot:
+            print("You must be plotting to dump out the plot data to file!")
+            exit(-1)
 
         # Some constants not found in fits file
         self.values = 2  # real and imaginary
@@ -48,7 +53,7 @@ class ViewFITSArgs:
         # Read fits file
         print(f"Opening with pymwalib using metafits file {self.metafits_filename} and data file {self.filename}...")
         self.context = Context(self.metafits_filename, [self.filename,])
-
+        print(self.context.coarse_channels)
         self.correlator_version: CorrelatorVersion = self.context.corr_version
         self.pols = self.context.num_visibility_pols  # xx,xy,yx,yy
 
@@ -176,53 +181,87 @@ def peek_fits(program_args: ViewFITSArgs):
     print("Initialising data structures...")
 
     # ppd array will be [timestep][channel]
-    plot_ppd_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
-    plot_ppd_data_x.fill(0)
-    plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
-    plot_ppd_data_y.fill(0)
+    if program_args.ppd_plot:
+        plot_ppd_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+        plot_ppd_data_x.fill(0)
+        plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+        plot_ppd_data_y.fill(0)
 
     # ppd plot 2 array will be [timestep][baseline][channel]
-    plot_ppd2_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
-    plot_ppd2_data_x.fill(0)
-    plot_ppd2_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
-    plot_ppd2_data_y.fill(0)
+    if program_args.ppd_plot2:
+        plot_ppd2_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
+        plot_ppd2_data_x.fill(0)
+        plot_ppd2_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
+        plot_ppd2_data_y.fill(0)
 
     # Grid plot
-    plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
-    plot_grid_data.fill(0)
+    if program_args.grid_plot:
+        plot_grid_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
+        plot_grid_data.fill(0)
 
     # Grid plot 2 array
-    plot_grid2_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
-    plot_grid2_data.fill(0)
+    if program_args.grid_plot2:
+        plot_grid2_data = np.empty(shape=(program_args.time_step_count, program_args.tile_count, program_args.tile_count))
+        plot_grid2_data.fill(0)
 
     # Phase plot
-    plot_phase_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
-    plot_phase_data_x.fill(0)
-    plot_phase_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
-    plot_phase_data_y.fill(0)
+    if program_args.phase_plot_all or program_args.phase_plot_one:
+        plot_phase_data_x = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
+        plot_phase_data_x.fill(0)
+        plot_phase_data_y = np.empty(shape=(program_args.time_step_count, program_args.baseline_count, program_args.channel_count))
+        plot_phase_data_y.fill(0)
 
-    # create a list of the hdus we want
-    weight_list = []
+    raw_dump_file = None
+    plot_dump_file = None
 
-    # print the header of each HDU, including the primary
-    #print("Primary HDU:\n")
-    #print(repr(program_args.fits_hdu_list[0].header))
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"{program_args.context.obsid}_mwax.csv"
+    else:
+        filename = f"{program_args.context.obsid}_mwa.csv"
 
-    # print a csv header if we're not plotting
-    if not program_args.any_plotting:
-        #print("time,baseline,chan,ant1,ant2, xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i, power_x, power_y")
-        print("xx_r, xx_i, xy_r, xy_i,yx_r, yx_i, yy_r, yy_i")
+    # Open a file for dumping the plot values
+    if program_args.dumpplot:
+        plot_dump_filename = f"plot_dump_{filename}"
+        print(f"Openning {plot_dump_filename} for writing")
+        plot_dump_file = open(plot_dump_filename, "w")
 
-    if not program_args.any_plotting:
-        dump_file = open("mwax_dump.csv", "w")
+        # Write the csv header depending on the type of plot
+        if program_args.ppd_plot:
+            plot_dump_file.write(f"time_index, fine_chan, x, y\n")
+
+        elif program_args.ppd_plot2:
+            plot_dump_file.write(f"plot_number, time_index, fine_chan, x, y\n")
+
+        elif program_args.grid_plot:
+            plot_dump_file.write(f"unix_time, tile1, tile2, log10_scaled_power\n")
+
+        elif program_args.grid_plot2:
+            plot_dump_file.write(f"unix_time, tile1, tile2, log10_scaled_power\n")
+
+        elif program_args.phase_plot_one:
+            plot_dump_file.write(f"time_index, baseline, x, y\n")
+
+        elif program_args.phase_plot_all:
+            plot_dump_file.write(f"time_index, baseline, x, y\n")
+
+    # print a csv header for the raw dump
+    if program_args.dumpraw:
+        raw_dump_filename = f"raw_dump_{filename}"
+        print(f"Openning {raw_dump_filename} for writing")
+        raw_dump_file = open(raw_dump_filename, "w")
+
+        raw_dump_file.write("unix_time, baseline, ant1, ant2, fine_ch, "
+                            "xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i, "
+                            "xx_pow, xy_pow, yx_pow, yy_pow, x_phase_deg, y_phase_deg\n")
 
     for timestep_index, timestep in enumerate(program_args.context.timesteps):
         time_index = timestep_index - program_args.hdu_time1
 
-        print(f"Processing timestep: {timestep.index} (time index: {time_index})...")
         if timestep_index < program_args.hdu_time1 or timestep_index > program_args.hdu_time2:
             print(f"Skipping timestep index {timestep_index} (out of range)")
             continue
+        else:
+            print(f"Processing timestep: {timestep.index} (time index: {time_index})...")
 
         # Read data
         data = program_args.context.read_by_baseline(timestep.index,
@@ -233,11 +272,6 @@ def peek_fits(program_args: ViewFITSArgs):
         selected_baseline = 0
 
         #
-        # Correlator v2
-        #
-        # was:
-        # for i in range(0, program_args.tile2 + 1):
-        #   for j in range(i, program_args.fits_tiles):
         for i in range(0, program_args.tile2 + 1):
             for j in range(i, program_args.fits_tiles):
                 # Explaining this if:
@@ -247,7 +281,7 @@ def peek_fits(program_args: ViewFITSArgs):
                 if ((i == j and program_args.autos_only is True) or
                    (program_args.autos_only is False)) and \
                    (meets_criteria(i, j, program_args.tile1, program_args.tile2, program_args.mode)):
-                    print(f"t {time_index}, baseline {baseline}, {i}, {j}")
+                    #print(f"t {time_index}, baseline {baseline}, {i}, {j}")
 
                     for chan in range(program_args.channel1, program_args.channel2 + 1):
                         index = chan * (program_args.pols * program_args.values)
@@ -268,6 +302,13 @@ def peek_fits(program_args: ViewFITSArgs):
                         power_xy = xy_i * xy_i + xy_r * xy_r
                         power_yx = yx_i * yx_i + yx_r * yx_r
                         power_yy = yy_i * yy_i + yy_r * yy_r
+
+                        if program_args.correlator_version == CorrelatorVersion.V2.value:
+                            phase_x = math.degrees(math.atan2(xx_i, xx_r))
+                            phase_y = math.degrees(math.atan2(yy_i, yy_r))
+                        else:
+                            phase_x = math.degrees(math.atan2(-xx_i, xx_r))
+                            phase_y = math.degrees(math.atan2(-yy_i, yy_r))
 
                         if program_args.ppd_plot:
                             plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_xx
@@ -295,48 +336,40 @@ def peek_fits(program_args: ViewFITSArgs):
                                 exit(-1)
 
                         elif program_args.phase_plot_all or program_args.phase_plot_one:
-                            phase_x = math.degrees(math.atan2(xx_i, xx_r))
-                            phase_y = math.degrees(math.atan2(yy_i, yy_r))
-
                             plot_phase_data_x[time_index][selected_baseline][chan] = phase_x
                             plot_phase_data_y[time_index][selected_baseline][chan] = phase_y
 
-                        else:
-                            if not program_args.weights and not program_args.any_plotting:
-                                #print(
-                                #    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}".format(
-                                #        time, baseline, chan, i, j, xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,
-                                #       power_x, power_y))
-                                dump_file.write(
-                                    "{0},{1},{2},{3},{4},{5},{6},{7}\n".format(
-                                        xx_r, xx_i, xy_r, xy_i, yx_r, yx_i, yy_r, yy_i,))
+                        if program_args.dumpraw:
+                            raw_dump_file.write(
+                                f"{timestep.unix_time_ms / 1000.0},"
+                                f"{baseline},"
+                                f"{i},"
+                                f"{j},"
+                                f"{chan},"
+                                f"{xx_r},"
+                                f"{xx_i},"
+                                f"{xy_r},"
+                                f"{xy_i},"
+                                f"{yx_r},"
+                                f"{yx_i},"
+                                f"{yy_r},"
+                                f"{yy_i},"                                
+                                f"{power_xx},"
+                                f"{power_xy},"
+                                f"{power_yx},"
+                                f"{power_yy},"
+                                f"{phase_x},"
+                                f"{phase_y}\n")
 
                     selected_baseline = selected_baseline + 1
 
                 baseline = baseline + 1
 
-        print(" done!")
+    print("Processing of data done!")
 
-    if not program_args.any_plotting:
-        dump_file.close()
-
-    print("Processing weights...", end="")
-    for hdu in weight_list:
-        time = hdu.header["MARKER"] + 1
-        baseline = 0
-        for i in range(program_args.tile1, program_args.tile2 + 1):
-            for j in range(i, program_args.tile2 + 1):
-                if ((i == j and program_args.autos_only is True)
-                        or (program_args.autos_only is False)):
-                    w_xx = hdu.data[baseline][0]
-                    w_xy = hdu.data[baseline][1]
-                    w_yx = hdu.data[baseline][2]
-                    w_yy = hdu.data[baseline][3]
-
-                    if program_args.weights:
-                        print(f"{time} {baseline} {i} v {j}: {w_xx}, {w_xy}, {w_yx}, {w_yy}")
-
-                baseline = baseline + 1
+    if program_args.dumpraw:
+        if raw_dump_file:
+            raw_dump_file.close()
 
     if program_args.ppd_plot:
         convert_to_db = True
@@ -355,7 +388,11 @@ def peek_fits(program_args: ViewFITSArgs):
     if program_args.phase_plot_all or program_args.phase_plot_one:
         do_phase_plot(program_args.param_string, program_args, plot_phase_data_x, plot_phase_data_y)
 
-    print("Done!\n")
+    if program_args.dumpraw:
+        if plot_dump_file:
+            plot_dump_file.close()
+
+    print("view_fits Done!\n")
 
 
 def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_data_y, convert_to_db):
@@ -660,13 +697,18 @@ def do_grid_plot2(title, program_args: ViewFITSArgs, plot_grid_data):
 
 def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_phase_data_y):
     print("Preparing phase plot...")
-    print(f"Timesteps: {program_args.time_step_count}, tiles: {program_args.tile_count}, channels: {program_args.channel_count}")
 
     # Work out layout of plots
     if program_args.phase_plot_one:
         plots = 1
     else:
-        plots = (program_args.tile2 - program_args.tile1) + 1
+        plots = program_args.baseline_count
+
+    print(f"Timesteps: {program_args.time_step_count}, "
+          f"baselines: {program_args.baseline_count}, "
+          f"tiles: {program_args.tile_count}, "
+          f"channels: {program_args.channel_count}, "
+          f"plots: {plots}")
 
     plot_rows = math.floor(math.sqrt(plots))
     plot_cols = math.ceil(plots / plot_rows)
@@ -680,16 +722,15 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
     for i in range(0, program_args.tile_count):
         for j in range(i, program_args.tile_count):
             if program_args.phase_plot_one:
-               print(f"{i} vs {j}")
                if not (i == 0 and j == (program_args.tile_count - 1)):
                    # skip this plot
-                   print("skip")
+                   print(f"{i} vs {j} skip")
                    baseline = baseline + 1
                    continue
-            else:
-               if i != program_args.tile1:
-                   print("skip")
-                   continue
+            #else:
+            #   if i != program_args.tile1:
+            #       print(f"{i} vs {j} skip")
+            #       continue
 
             print(f"Adding data points for plot({i},{j})...")
             channel_list = range(program_args.channel1, program_args.channel2 + 1)
@@ -699,12 +740,12 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
             # Do plots
             for t in range(0, program_args.time_step_count):
-                print(program_args.context.num_timesteps)
-                print(f"Time {t}")
-                print("X")
-                print(plot_phase_data_x[t][baseline])
-                print("Y")
-                print(plot_phase_data_y[t][baseline])
+                #print(program_args.context.num_timesteps)
+                #print(f"Time {t}")
+                #print("X")
+                #print(plot_phase_data_x[t][baseline])
+                #print("Y")
+                #print(plot_phase_data_y[t][baseline])
 
                 plot.plot(channel_list, plot_phase_data_x[t][baseline], 'o', markersize=3, color='blue')
                 plot.plot(channel_list, plot_phase_data_y[t][baseline], 'o', markersize=3, color='green')
@@ -735,8 +776,13 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
     print("Saving figure...")
     # Save final plot to disk
-    plt.savefig("phase_plot.png", bbox_inches='tight', dpi=dpi)
-    print("saved phase_plot.png")
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"phase_plot_mwax.png"
+    else:
+        filename = f"phase_plot_mwa.png"
+
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    print(f"saved {filename}")
     plt.show()
 
 
@@ -776,7 +822,8 @@ if __name__ == '__main__':
 
     parser.add_argument("-o", "--mode", required=True, help="How to interpret a1 and a2: RANGE or BASELINE")
 
-    parser.add_argument("-w", "--weights", required=False, help="Dump the weights", action='store_true')
+    parser.add_argument("-dr", "--dump-raw", required=False, help="Dump the raw data", action='store_true')
+    parser.add_argument("-dp", "--dump-plot", required=False, help="Dump the plot data", action='store_true')
     args = vars(parser.parse_args())
 
     parsed_args = ViewFITSArgs(args)
