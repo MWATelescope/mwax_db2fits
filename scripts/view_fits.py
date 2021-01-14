@@ -182,9 +182,9 @@ def peek_fits(program_args: ViewFITSArgs):
 
     # ppd array will be [timestep][channel]
     if program_args.ppd_plot:
-        plot_ppd_data_x = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+        plot_ppd_data_x = np.empty(shape=(program_args.channel_count, program_args.time_step_count))
         plot_ppd_data_x.fill(0)
-        plot_ppd_data_y = np.empty(shape=(program_args.time_step_count, program_args.channel_count))
+        plot_ppd_data_y = np.empty(shape=(program_args.channel_count, program_args.time_step_count))
         plot_ppd_data_y.fill(0)
 
     # ppd plot 2 array will be [timestep][baseline][channel]
@@ -303,16 +303,12 @@ def peek_fits(program_args: ViewFITSArgs):
                         power_yx = yx_i * yx_i + yx_r * yx_r
                         power_yy = yy_i * yy_i + yy_r * yy_r
 
-                        if program_args.correlator_version == CorrelatorVersion.V2.value:
-                            phase_x = math.degrees(math.atan2(xx_i, xx_r))
-                            phase_y = math.degrees(math.atan2(yy_i, yy_r))
-                        else:
-                            phase_x = math.degrees(math.atan2(-xx_i, xx_r))
-                            phase_y = math.degrees(math.atan2(-yy_i, yy_r))
+                        phase_x = math.degrees(math.atan2(xx_i, xx_r))
+                        phase_y = math.degrees(math.atan2(yy_i, yy_r))
 
                         if program_args.ppd_plot:
-                            plot_ppd_data_x[time_index][chan] = plot_ppd_data_x[time_index][chan] + power_xx
-                            plot_ppd_data_y[time_index][chan] = plot_ppd_data_y[time_index][chan] + power_yy
+                            plot_ppd_data_x[chan][time_index] = plot_ppd_data_x[chan][time_index] + (power_xx / program_args.baseline_count)
+                            plot_ppd_data_y[chan][time_index] = plot_ppd_data_y[chan][time_index] + (power_yy / program_args.baseline_count)
 
                         elif program_args.ppd_plot2:
                             plot_ppd2_data_x[time_index][selected_baseline][chan] = power_xx
@@ -372,11 +368,11 @@ def peek_fits(program_args: ViewFITSArgs):
             raw_dump_file.close()
 
     if program_args.ppd_plot:
-        convert_to_db = True
+        convert_to_db = False
         do_ppd_plot(program_args.param_string, program_args, plot_ppd_data_x, plot_ppd_data_y, convert_to_db)
 
     if program_args.ppd_plot2:
-        convert_to_db = True
+        convert_to_db = False
         do_ppd_plot2(program_args.param_string, program_args, plot_ppd2_data_x, plot_ppd2_data_y, convert_to_db)
 
     if program_args.grid_plot:
@@ -388,7 +384,7 @@ def peek_fits(program_args: ViewFITSArgs):
     if program_args.phase_plot_all or program_args.phase_plot_one:
         do_phase_plot(program_args.param_string, program_args, plot_phase_data_x, plot_phase_data_y)
 
-    if program_args.dumpraw:
+    if program_args.dumpplot:
         if plot_dump_file:
             plot_dump_file.close()
 
@@ -396,67 +392,59 @@ def peek_fits(program_args: ViewFITSArgs):
 
 
 def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_data_y, convert_to_db):
+    # This will sum across timesteps and baselines to make a single ppd
     print("Preparing ppd plot...")
 
-    # Work out layout of plots
-    plots = program_args.time_step_count
-    plot_rows = math.floor(math.sqrt(plots))
-    plot_cols = math.ceil(plots / plot_rows)
-    plot_row = 0
-    plot_col = 0
     min_db = 0
 
     # Convert to a dB figure
     if convert_to_db:
         for t in range(0, program_args.time_step_count):
             for c in range(0, program_args.channel_count):
-                plot_ppd_data_x[t][c] = math.log10(plot_ppd_data_x[t][c] + 1) * 10
-                plot_ppd_data_y[t][c] = math.log10(plot_ppd_data_y[t][c] + 1) * 10
+                plot_ppd_data_x[c][t] = math.log10(plot_ppd_data_x[c][t] + 1) * 10
+                plot_ppd_data_y[c][t] = math.log10(plot_ppd_data_y[c][t] + 1) * 10
 
         # Get min dB value
         min_db = 0 # min(np.array(plot_ppd_data_x).min(), np.array(plot_ppd_data_y).min())
 
-    fig, ax = plt.subplots(figsize=(20, 10),nrows=plot_rows, ncols=plot_cols, squeeze=False, sharey="all", dpi=dpi)
+    fig, ax = plt.subplots(figsize=(20, 10),nrows=1, ncols=1, squeeze=False, sharey="all", dpi=dpi)
     fig.suptitle(title)
 
     for t in range(0, program_args.time_step_count):
-        print(f"Adding data points for plot({t})...")
+        print(f"Adding data points for time ({t})...")
 
         # Step down the dB by the min so we have a 0 base
         for c in range(0, program_args.channel_count):
-            plot_ppd_data_x[t][c] = plot_ppd_data_x[t][c] - min_db
-            plot_ppd_data_y[t][c] = plot_ppd_data_y[t][c] - min_db
+            plot_ppd_data_x[c][t] = plot_ppd_data_x[c][t] - min_db
+            plot_ppd_data_y[c][t] = plot_ppd_data_y[c][t] - min_db
 
-        # Get the current plot
-        plot = ax[plot_row][plot_col]
+    # Get the current plot
+    plot = ax[0][0]
 
-        # Draw this plot
-        plot.plot(plot_ppd_data_x[t], color='blue')
-        plot.plot(plot_ppd_data_y[t], color='green')
+    # Draw this plot
+    plot.plot(plot_ppd_data_x, 'o', color='blue')
+    plot.plot(plot_ppd_data_y, 'o', color='green')
 
-        # Set labels
-        if convert_to_db:
-            plot.set_ylabel("dB", size=6)
-        else:
-            plot.set_ylabel("Raw value", size=6)
+    # Set labels
+    if convert_to_db:
+        plot.set_ylabel("dB", size=6)
+    else:
+        plot.set_ylabel("Raw value", size=6)
 
-        plot.set_xlabel("fine channel", size=6)
+    plot.set_xlabel("fine channel", size=6)
 
-        # Set plot title
-        plot.set_title(f"t={program_args.unix_time1 + (t * (program_args.context.integration_time_milliseconds / 1000.))}", size=6)
-
-        # Increment so we know which plot we are on
-        if plot_col < plot_cols - 1:
-            plot_col = plot_col + 1
-        else:
-            plot_row = plot_row + 1
-            plot_col = 0
+    # Set plot title
+    plot.set_title(f"t={program_args.unix_time1}", size=6)
 
     print("Saving figure...")
 
     # Save the final plot to disk
-    plt.savefig("ppd_plot.png", bbox_inches='tight', dpi=dpi)
-    print("saved ppd_plot.png")
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"ppd_plot_mwax.png"
+    else:
+        filename = f"ppd_plot_mwa.png"
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    print(f"saved {filename}")
     plt.show()
 
 
@@ -524,8 +512,12 @@ def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_da
     print("Saving figure...")
 
     # Save the final plot to disk
-    plt.savefig("ppd_plot2.png", bbox_inches='tight', dpi=dpi)
-    print("saved ppd_plot2.png")
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"ppd_plot2_mwax.png"
+    else:
+        filename = f"ppd_plot2_mwa.png"
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    print(f"saved {filename}")
     plt.show()
 
 
@@ -608,8 +600,12 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
             plot_col = 0
 
     print("Saving figure...")
-    plt.savefig("grid_plot.png", bbox_inches='tight', dpi=dpi)
-    print("saved grid_plot.png")
+    if program_args.correlator_version == CorrelatorVersion.V2.value:
+        filename = f"grid_plot_mwax.png"
+    else:
+        filename = f"grid_plot_mwa.png"
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    print(f"saved {filename}")
     plt.show()
 
 
