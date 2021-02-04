@@ -1,5 +1,5 @@
 #CMakeLists.txt
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.5)
 project(mwax_db2fits)
 
 add_definitions(-D_GNU_SOURCE=1)
