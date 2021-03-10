@@ -12,7 +12,7 @@ endif()
 
 find_package(OpenMP REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/include ../mwax_common /opt/psrdada/src /opt/cfitsio/cfitsio-3.47) # -I flags for compiler
+include_directories(${CMAKE_SOURCE_DIR}/include ../mwax_common) # -I flags for compiler
 link_directories(${CMAKE_SOURCE_DIR}/lib /usr/local/cuda/lib64)        # -L flags for linker
 
 set(PROGSRC src/main.c src/args.c ../mwax_common/mwax_global_defs.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
