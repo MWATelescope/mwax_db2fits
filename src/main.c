@@ -154,6 +154,9 @@ int main(int argc, char *argv[])
   g_health.data_block = (ipcbuf_t *)client->data_block;
   g_health.health_udp_ip = globalArgs.health_ip;
   g_health.health_udp_port = globalArgs.health_port;
+  g_health.obs_id = 0;
+  g_health.subobs_id = 0;
+
   strncpy(g_health.hostname, g_ctx.hostname, HOST_NAME_LEN);
 
   multilog(g_ctx.log, LOG_INFO, "main():Launching health thread...\n");

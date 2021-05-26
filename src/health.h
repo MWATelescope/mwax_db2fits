@@ -16,14 +16,14 @@ typedef struct
     int version_major;
     int version_minor;
     int version_build;
-    char hostname[HOST_NAME_LEN];
-    time_t start_time;
-    time_t health_time;
-    double up_time;
+    char hostname[HOST_NAME_LEN]; // Hostname mwax_db2fits is running on e.g. "mwax01". HOST_NAME_LEN=64.
+    time_t start_time;            // UNIX time mwax_db2fits was started
+    time_t health_time;           // UNIX time this health packet was generated
+    double up_time;               // Seconds
 
-    int status;
-    long obs_id;
-    long subobs_id;
+    int status;     // 1=RUNNING, 2=SHUTTING_DOWN
+    long obs_id;    // Obsid of current obs or 0 if not currently processing an observation
+    long subobs_id; // Subobsid of current subobs or 0 if not currently processing a sub observation
 } health_udp_data_s;
 #pragma pack(pop)
 

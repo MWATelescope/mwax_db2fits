@@ -725,6 +725,9 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
     }
   }
 
+  // update health- we are no longer in an observation
+  set_health(STATUS_RUNNING, 0, 0);
+
   multilog(log, LOG_INFO, "dada_dbfits_close(): completed\n");
 
   return EXIT_SUCCESS;
