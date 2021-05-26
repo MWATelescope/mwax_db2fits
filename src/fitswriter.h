@@ -32,6 +32,9 @@
 #define MWA_FITS_KEY_CORR_CHAN "CORRCHAN"
 #define MWA_FITS_KEY_MC_IP "MC_IP"
 #define MWA_FITS_KEY_MC_PORT "MC_PORT"
+#define MWA_FITS_KEY_MWAX_U2S_VERSION "U2S_VER"
+#define MWA_FITS_KEY_MWAX_DB2CORRELATE2DB_VERSION "CBF_VER"
+#define MWA_FITS_KEY_MWAX_DB2FITS_VERSION "DB2F_VER"
 
 /*typedef struct 
 {
@@ -40,10 +43,10 @@
     char* project;
 } metafits_info;*/
 
-int open_fits(dada_client_t *client, fitsfile **fptr, const char* filename);
-int create_fits(dada_client_t *client, fitsfile **fptr, const char* filename);
+int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
+int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
 int close_fits(dada_client_t *client, fitsfile **fptr);
-int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, 
+int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time,
                                     int marker, int baselines, int fine_channels, int polarisations, float *buffer, uint64_t bytes);
-int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, 
+int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time,
                                int marker, int baselines, int polarisations, float *buffer, uint64_t bytes);

@@ -16,7 +16,6 @@
 #include "dada_client.h"
 #include "dada_hdu.h"
 #include "multilog.h"
-#include "global.h"
 
 // function prototypes
 int dada_dbfits_open(dada_client_t *client);

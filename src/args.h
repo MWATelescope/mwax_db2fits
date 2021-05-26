@@ -12,14 +12,15 @@
 // Command line Args
 typedef struct
 {
-    key_t input_db_key;    
-    char* destination_path;
-    char* metafits_path;
-    char* health_ip;
-    char* stats_path;
-    int health_port;  
-    long file_size_limit;  
+    key_t input_db_key;
+    char *destination_path;
+    char *metafits_path;
+    char *health_ip;
+    char *stats_path;
+    int health_port;
+    long file_size_limit;
 } globalArgs_s;
 
 void print_usage();
-int process_args(int argc, char* argv[], globalArgs_s* globalArgs);
+void print_version();
+int process_args(int argc, char *argv[], globalArgs_s *globalArgs);

@@ -11,11 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "fitswriter.h"
+#include "fitswriter.h"
 #include "global.h"
-#include "fitswriter.h"
-#include "utils.h"
-#include "fitswriter.h"
 #include "multilog.h"
+#include "utils.h"
+#include "version.h"
 
 /**
  *
@@ -28,24 +29,24 @@
 int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
 {
   assert(client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
+  dada_db_s *ctx = (dada_db_s *)client->context;
 
   assert(ctx->log != 0);
-  multilog_t *log = (multilog_t *) client->log;
+  multilog_t *log = (multilog_t *)client->log;
 
   int status = 0;
 
   multilog(log, LOG_INFO, "create_fits(): Creating new fits file %s...\n", filename);
 
   // So CFITSIO overwrites the file, we should prefix the filename with !
-  int len = strlen(filename)+2;
+  int len = strlen(filename) + 2;
   char cfitsio_filename[len];
   sprintf(cfitsio_filename, "!%s", filename);
 
   // Create a new blank fits file
   if (fits_create_file(fptr, cfitsio_filename, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error creating fits file: %s. Error: %d -- %s\n", filename, status, error_text);
     return -1;
@@ -57,9 +58,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // SIMPLE
   int simple = MWA_FITS_VALUE_SIMPLE;
 
-  if ( fits_write_key(*fptr, TLOGICAL, MWA_FITS_KEY_SIMPLE, &(simple), "conforms to FITS standard", &status) )
+  if (fits_write_key(*fptr, TLOGICAL, MWA_FITS_KEY_SIMPLE, &(simple), "conforms to FITS standard", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_SIMPLE, filename, status, error_text);
     return -1;
@@ -68,9 +69,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // BITPIX
   long bitpix = MWA_FITS_VALUE_BITPIX;
 
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_BITPIX, &(bitpix), "array data type", &status) )
+  if (fits_write_key(*fptr, TLONG, MWA_FITS_KEY_BITPIX, &(bitpix), "array data type", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_BITPIX, filename, status, error_text);
     return -1;
@@ -79,27 +80,27 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // NAXIS
   long naxis = MWA_FITS_VALUE_NAXIS;
 
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_NAXIS, &(naxis), "number of array dimensions", &status) )
+  if (fits_write_key(*fptr, TLONG, MWA_FITS_KEY_NAXIS, &(naxis), "number of array dimensions", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NAXIS, filename, status, error_text);
     return -1;
   }
 
   // FITS citation comment 1
-  if ( fits_write_comment(*fptr, "FITS (Flexible Image Transport System) format is defined in 'Astronomy", &status) )
+  if (fits_write_comment(*fptr, "FITS (Flexible Image Transport System) format is defined in 'Astronomy", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits comment to file %s. Error: %d -- %s\n", filename, status, error_text);
     return -1;
   }
 
   // FITS citation comment 2
-  if ( fits_write_comment(*fptr, "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H", &status) )
+  if (fits_write_comment(*fptr, "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits comment to file %s. Error: %d -- %s\n", filename, status, error_text);
     return -1;
@@ -108,27 +109,57 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // CORR_VERS
   int corr_ver = MWA_FITS_VALUE_CORR_VER;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_VER, &(corr_ver), "MWA Correlator Version", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_VER, &(corr_ver), "MWA Correlator Version", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_VER, filename, status, error_text);
     return -1;
   }
 
-  // Data format comment1
-  if ( fits_write_comment(*fptr, "Visibilities: 1 integration per HDU: [baseline][finechan][pol][r,i]", &status) )
+  // mwax_u2s version
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MWAX_U2S_VERSION, &ctx->mwax_u2s_version, "MWAX u2s version", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MWAX_U2S_VERSION, filename, status, error_text);
+    return -1;
+  }
+
+  // mwax_db2correlate2db_version
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MWAX_DB2CORRELATE2DB_VERSION, &ctx->mwax_db2correlate2db_version, "MWAX db2correlate2db version", &status))
+  {
+    char error_text[30] = "";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MWAX_DB2CORRELATE2DB_VERSION, filename, status, error_text);
+    return -1;
+  }
+
+  // mwax_db2fits_version
+  char mwax_db2fits_version[MWAX_VERSION_STRING_LEN];
+  snprintf(mwax_db2fits_version, MWAX_VERSION_STRING_LEN, "%d.%d.%d", MWAX_DB2FITS_VERSION_MAJOR, MWAX_DB2FITS_VERSION_MINOR, MWAX_DB2FITS_VERSION_PATCH);
+
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MWAX_DB2FITS_VERSION, &(mwax_db2fits_version), "MWAX db2fits version", &status))
+  {
+    char error_text[30] = "";
+    fits_get_errstatus(status, error_text);
+    multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MWAX_DB2FITS_VERSION, filename, status, error_text);
+    return -1;
+  }
+
+  // Data format comment1
+  if (fits_write_comment(*fptr, "Visibilities: 1 integration per HDU: [baseline][finechan][pol][r,i]", &status))
+  {
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing visibility format comment to file %s. Error: %d -- %s\n", filename, status, error_text);
     return -1;
   }
 
   // Data format comment2
-  if ( fits_write_comment(*fptr, "Weights: 1 integration per HDU: [baseline][pol][weight]", &status) )
+  if (fits_write_comment(*fptr, "Weights: 1 integration per HDU: [baseline][pol][weight]", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing visibility format comment to file %s. Error: %d -- %s\n", filename, status, error_text);
     return -1;
@@ -139,7 +170,7 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
 
   if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_MARKER, &marker, "Data offset marker (all channels should match)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "Error writing fits key %s into HDU. Error: %d -- %s\n", MWA_FITS_KEY_MARKER, status, error_text);
     return EXIT_FAILURE;
@@ -148,9 +179,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // TIME
   long unix_time = ctx->unix_time;
 
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_TIME, &(unix_time), "Unix time (seconds)", &status) )
+  if (fits_write_key(*fptr, TLONG, MWA_FITS_KEY_TIME, &(unix_time), "Unix time (seconds)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_TIME, filename, status, error_text);
     return -1;
@@ -159,27 +190,27 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // MILLITIM
   int unix_millitime = ctx->unix_time_msec;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_MILLITIM, &(unix_millitime), "Milliseconds since TIME", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_MILLITIM, &(unix_millitime), "Milliseconds since TIME", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MILLITIM, filename, status, error_text);
     return -1;
   }
 
   // PROJID
-  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_PROJID, ctx->proj_id, "MWA Project Id", &status) )
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_PROJID, ctx->proj_id, "MWA Project Id", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_PROJID, filename, status, error_text);
     return -1;
   }
 
   // OBSID
-  if ( fits_write_key(*fptr, TLONG, MWA_FITS_KEY_OBSID, &(ctx->obs_id), "MWA Observation Id", &status) )
+  if (fits_write_key(*fptr, TLONG, MWA_FITS_KEY_OBSID, &(ctx->obs_id), "MWA Observation Id", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_OBSID, filename, status, error_text);
     return -1;
@@ -188,20 +219,20 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // FINECHAN
   float finechan = ctx->fine_chan_width_hz / 1000.0f;
 
-  if ( fits_write_key(*fptr, TFLOAT, MWA_FITS_KEY_FINECHAN, &(finechan), "[kHz] Fine channel width", &status) )
+  if (fits_write_key(*fptr, TFLOAT, MWA_FITS_KEY_FINECHAN, &(finechan), "[kHz] Fine channel width", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_FINECHAN, filename, status, error_text);
     return -1;
   }
-  
+
   // NFINECHS
   int nchans = ctx->nfine_chan;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_NFINECHS, &(nchans), "Number of fine channels in this coarse channel", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_NFINECHS, &(nchans), "Number of fine channels in this coarse channel", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NFINECHS, filename, status, error_text);
     return -1;
@@ -210,9 +241,9 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // INTTIME
   float int_time_sec = (float)ctx->int_time_msec / 1000.0;
 
-  if ( fits_write_key(*fptr, TFLOAT, MWA_FITS_KEY_INTTIME, &(int_time_sec), "Integration time (s)", &status) )
+  if (fits_write_key(*fptr, TFLOAT, MWA_FITS_KEY_INTTIME, &(int_time_sec), "Integration time (s)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_INTTIME, filename, status, error_text);
     return -1;
@@ -221,18 +252,18 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // NINPUTS
   int ninputs = ctx->ninputs_xgpu;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_NINPUTS, &(ninputs), "Number of rf inputs into the correlation products", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_NINPUTS, &(ninputs), "Number of rf inputs into the correlation products", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_NINPUTS, filename, status, error_text);
     return -1;
   }
-    
+
   // CORR_HOST
-  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_CORR_HOST, ctx->hostname, "Correlator host", &status) )
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_CORR_HOST, ctx->hostname, "Correlator host", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_HOST, filename, status, error_text);
     return -1;
@@ -241,18 +272,18 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // CORR_CHAN
   int corr_chan = ctx->corr_coarse_channel;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_CHAN, &(corr_chan), "Correlator coarse channel", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_CHAN, &(corr_chan), "Correlator coarse channel", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_CORR_CHAN, filename, status, error_text);
     return -1;
   }
 
   // MC_IP
-  if ( fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MC_IP, ctx->multicast_ip, "Multicast IP", &status) )
+  if (fits_write_key(*fptr, TSTRING, MWA_FITS_KEY_MC_IP, ctx->multicast_ip, "Multicast IP", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MC_IP, filename, status, error_text);
     return -1;
@@ -261,15 +292,15 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   // MC_PORT
   int multicast_port = 0;
 
-  if ( fits_write_key(*fptr, TINT, MWA_FITS_KEY_MC_PORT, &(multicast_port), "Multicast Port", &status) )
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_MC_PORT, &(multicast_port), "Multicast Port", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits(): Error writing fits key: %s to file %s. Error: %d -- %s\n", MWA_FITS_KEY_MC_PORT, filename, status, error_text);
     return -1;
   }
 
-  return(EXIT_SUCCESS);
+  return (EXIT_SUCCESS);
 }
 
 /**
@@ -282,10 +313,10 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
 int close_fits(dada_client_t *client, fitsfile **fptr)
 {
   assert(client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
+  dada_db_s *ctx = (dada_db_s *)client->context;
 
   assert(ctx->log != 0);
-  multilog_t *log = (multilog_t *) ctx->log;
+  multilog_t *log = (multilog_t *)ctx->log;
 
   multilog(log, LOG_DEBUG, "close_fits(): Starting.\n");
 
@@ -295,7 +326,7 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
   {
     if (fits_close_file(*fptr, &status))
     {
-      char error_text[30]="";
+      char error_text[30] = "";
       fits_get_errstatus(status, error_text);
       multilog(log, LOG_ERR, "close_fits(): Error closing fits file. Error: %d -- %s\n", status, error_text);
       return EXIT_FAILURE;
@@ -310,7 +341,7 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
     multilog(log, LOG_WARNING, "close_fits(): Fits file is already closed.\n");
   }
 
-  return(EXIT_SUCCESS);
+  return (EXIT_SUCCESS);
 }
 
 /**
@@ -324,16 +355,16 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
 int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
 {
   assert(client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
+  dada_db_s *ctx = (dada_db_s *)client->context;
 
   assert(ctx->log != 0);
-  multilog_t *log = (multilog_t *) ctx->log;
+  multilog_t *log = (multilog_t *)ctx->log;
 
   int status = 0;
 
   if (fits_open_file(fptr, filename, READONLY, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "open_fits(): Error openning fits file %s. Error: %d -- %s\n", filename, status, error_text);
     return EXIT_FAILURE;
@@ -358,7 +389,7 @@ int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
  *  @param[in] bytes The number of bytes in the buffer to write.
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
  */
-int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, 
+int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker,
                                     int baselines, int fine_channels, int polarisations, float *buffer, uint64_t bytes)
 {
   //
@@ -403,25 +434,25 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   //  ...
   //
   assert(client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
+  dada_db_s *ctx = (dada_db_s *)client->context;
 
   assert(ctx->log != 0);
-  multilog_t *log = (multilog_t *) ctx->log;
+  multilog_t *log = (multilog_t *)ctx->log;
 
   int status = 0;
-  int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes
+  int bitpix = FLOAT_IMG; //complex(r,i)  = 2x4 bytes
   long naxis = 2;
-  uint64_t axis1_rows = fine_channels * polarisations * polarisations * 2;   //  we x2 as we store real and imaginary;
+  uint64_t axis1_rows = fine_channels * polarisations * polarisations * 2; //  we x2 as we store real and imaginary;
   uint64_t axis2_cols = baselines;
 
-  long naxes[2] = { axis1_rows, axis2_cols };
-  
+  long naxes[2] = {axis1_rows, axis2_cols};
+
   multilog(log, LOG_DEBUG, "create_fits_visibilities_imghdu(): Creating new visibility HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
 
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error creating visibility ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
@@ -430,9 +461,9 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   // TIME  - cotter uses this to align each channel
   char key_time[FLEN_KEYWORD] = "TIME";
 
-  if (fits_write_key(fptr, TLONG, key_time, &unix_time, (char *) "Unix time (seconds)", &status))
+  if (fits_write_key(fptr, TLONG, key_time, &unix_time, (char *)"Unix time (seconds)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing key %s into visibility HDU. Error: %d -- %s\n", key_time, status, error_text);
     return EXIT_FAILURE;
@@ -441,9 +472,9 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   // MILLITIME - provides millisecond component of TIoffset_ME
   char key_millitim[FLEN_KEYWORD] = "MILLITIM";
 
-  if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME",&status))
+  if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing %s into visibility HDU. Error: %d -- %s\n", key_millitim, status, error_text);
     return EXIT_FAILURE;
@@ -452,9 +483,9 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   // MARKER
   char key_marker[FLEN_KEYWORD] = "MARKER";
 
-  if (fits_write_key(fptr, TINT, key_marker, &marker, (char*)"Data offset marker (all channels should match)", &status))
+  if (fits_write_key(fptr, TINT, key_marker, &marker, (char *)"Data offset marker (all channels should match)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing key %s into visibility HDU. Error: %d -- %s\n", key_marker, status, error_text);
     return EXIT_FAILURE;
@@ -474,7 +505,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   // Actually write the HDU data
   if (fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_visibilities_imghdu(): Error writing data into visibility HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
@@ -498,11 +529,11 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
  *  @param[in] bytes The number of bytes in the buffer to write.
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
  */
-int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker, 
+int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time, int marker,
                                int baselines, int polarisations, float *buffer, uint64_t bytes)
-{  
+{
   // NAXIS1 is rows, NAXIS2 is cols. We want NAXIS1 < NAXIS2 for efficiency
-  // NAXIS1 = NPOL * NPOL 
+  // NAXIS1 = NPOL * NPOL
   // NAXIS2 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
   //
   //           Weights
@@ -510,28 +541,28 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   //    1-1    w       w       w       w
   //    1-2    w       w       w       w
   //    1-3    w       w       w       w
-  //    ...  
+  //    ...
   //
   assert(client != 0);
-  dada_db_s* ctx = (dada_db_s*) client->context;
+  dada_db_s *ctx = (dada_db_s *)client->context;
 
   assert(ctx->log != 0);
-  multilog_t *log = (multilog_t *) ctx->log;
+  multilog_t *log = (multilog_t *)ctx->log;
 
   int status = 0;
-  int bitpix = FLOAT_IMG;  //complex(r,i)  = 2x4 bytes
+  int bitpix = FLOAT_IMG; //complex(r,i)  = 2x4 bytes
   long naxis = 2;
   uint64_t axis1_rows = polarisations * polarisations;
   uint64_t axis2_cols = baselines;
 
-  long naxes[2] = { axis1_rows, axis2_cols };  
-  
-  multilog(log, LOG_DEBUG, "create_fits_weights_imghdu(): Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);  
-  
+  long naxes[2] = {axis1_rows, axis2_cols};
+
+  multilog(log, LOG_DEBUG, "create_fits_weights_imghdu(): Creating new weights HDU in fits file with dimensions %lld x %lld...\n", (long long)axis1_rows, (long long)axis2_cols);
+
   // Create new IMGHDU
   if (fits_create_img(fptr, bitpix, naxis, naxes, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error creating weights ImgHDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;
@@ -540,9 +571,9 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   // TIME  - cotter uses this to align each channel
   char key_time[FLEN_KEYWORD] = "TIME";
 
-  if (fits_write_key(fptr, TLONG, key_time, &unix_time, (char *) "Unix time (seconds)", &status))
+  if (fits_write_key(fptr, TLONG, key_time, &unix_time, (char *)"Unix time (seconds)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_time, status, error_text);
     return EXIT_FAILURE;
@@ -551,9 +582,9 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   // MILLITIME - provides millisecond component of TIME
   char key_millitim[FLEN_KEYWORD] = "MILLITIM";
 
-  if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME",&status))
+  if (fits_update_key(fptr, TINT, key_millitim, &unix_millisecond_time, (char *)"Milliseconds since TIME", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_millitim, status, error_text);
     return EXIT_FAILURE;
@@ -562,9 +593,9 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   // MARKER
   char key_marker[FLEN_KEYWORD] = "MARKER";
 
-  if (fits_write_key(fptr, TINT, key_marker, &marker, (char*)"Data offset marker (all channels should match)", &status))
+  if (fits_write_key(fptr, TINT, key_marker, &marker, (char *)"Data offset marker (all channels should match)", &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing key %s into weights HDU. Error: %d -- %s\n", key_marker, status, error_text);
     return EXIT_FAILURE;
@@ -584,7 +615,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   // Actually write the HDU data
   if (fits_write_img(fptr, TFLOAT, 1, nelements, buffer, &status))
   {
-    char error_text[30]="";
+    char error_text[30] = "";
     fits_get_errstatus(status, error_text);
     multilog(log, LOG_ERR, "create_fits_weights_imghdu(): Error writing data into weights HDU in fits file. Error: %d -- %s\n", status, error_text);
     return EXIT_FAILURE;

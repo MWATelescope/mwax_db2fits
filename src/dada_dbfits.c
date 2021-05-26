@@ -9,6 +9,7 @@
 #include <errno.h>
 #include "dada_dbfits.h"
 #include "../mwax_common/mwax_global_defs.h" // From mwax-common
+#include "global.h"
 #include "utils.h"
 
 /**
@@ -764,6 +765,9 @@ int read_dada_header(dada_client_t *client)
   ctx->bandwidth_hz = 0;
   ctx->fscrunch_factor = 0;
 
+  strncpy(ctx->mwax_u2s_version, "Unknown", MWAX_VERSION_STRING_LEN);
+  strncpy(ctx->mwax_db2correlate2db_version, "Unknown", MWAX_VERSION_STRING_LEN);
+
   strncpy(ctx->multicast_ip, "", IP_AS_STRING_LEN);
   ctx->multicast_port = 0;
 
@@ -896,6 +900,17 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }
 
+  // for now if we don't get version info from other mwax components it is just a warning
+  if (ascii_header_get(client->header, HEADER_MWAX_U2S_VERSION, "%s", &ctx->mwax_u2s_version) == -1)
+  {
+    multilog(log, LOG_WARNING, "read_dada_header(): %s not found in header.\n", HEADER_MWAX_U2S_VERSION);
+  }
+
+  if (ascii_header_get(client->header, HEADER_MWAX_DB2CORRELATE2DB_VERSION, "%s", &ctx->mwax_db2correlate2db_version) == -1)
+  {
+    multilog(log, LOG_WARNING, "read_dada_header(): %s not found in header.\n", HEADER_MWAX_DB2CORRELATE2DB_VERSION);
+  }
+
   // Output what we found in the header
   multilog(log, LOG_INFO, "Populated?:               %s\n", (ctx->populated == 1 ? "yes" : "no"));
   multilog(log, LOG_INFO, "Obs Id:                   %lu\n", ctx->obs_id);
@@ -920,6 +935,15 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Size of subobservation:   %lu bytes\n", ctx->transfer_size);
   multilog(log, LOG_INFO, "Multicast IP:             %s\n", ctx->multicast_ip);
   multilog(log, LOG_INFO, "Multicast Port:           %d\n", ctx->multicast_port);
+  multilog(log, LOG_INFO, "mwax_u2s version:         %s\n", ctx->mwax_u2s_version);
+  multilog(log, LOG_INFO, "mwax_db2corr2db version:  %s\n", ctx->mwax_db2correlate2db_version);
+
+  // Update health info
+  if (set_health(STATUS_RUNNING, ctx->obs_id, ctx->subobs_id) != EXIT_SUCCESS)
+  {
+    multilog(log, LOG_ERR, "read_dada_header(): Error setting health data");
+    return -1;
+  }
 
   return EXIT_SUCCESS;
 }
