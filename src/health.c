@@ -160,5 +160,7 @@ void *health_thread_fn(void *args)
 
     multilog(health_args->log, LOG_INFO, "Health: Thread finished.\n");
 
+    free(health_args->health_udp_interface_ip);
+
     return EXIT_SUCCESS;
 }
