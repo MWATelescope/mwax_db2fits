@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "health.h"
+#include "utils.h"
 #include "version.h"
 
 /**
@@ -29,30 +30,91 @@ void *health_thread_fn(void *args)
 
     multilog(health_args->log, LOG_INFO, "Health: Thread started.\n");
 
+    // Get the ip for the outbound multicast interface for health
+    char out_ip_address[IP_AS_STRING_LEN] = "";
+
+    if (get_ip_address_for_interface(health_args->health_udp_interface, out_ip_address) != EXIT_SUCCESS)
+    {
+        multilog(health_args->log, LOG_ERR, "Health: Could not get IP address for interface %s.\n", health_args->health_udp_interface);
+        exit(EXIT_FAILURE);
+    }
+
     // Initialise UDP socket
     int sock;
 
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
     {
         multilog(health_args->log, LOG_ERR, "Health: Could not open a socket to health IP: call to socket() failed.\n");
         exit(EXIT_FAILURE);
     }
 
-    // initialise the destination address struct
-    struct sockaddr_in si_other;
-    int slen = sizeof(struct sockaddr_in);
-    memset((char *)&si_other, 0, sizeof(si_other));
-    si_other.sin_family = AF_INET;
+    //
+    // Initialize the group sockaddr structure
+    //
+    struct sockaddr_in groupSock;
+    memset((char *)&groupSock, 0, sizeof(groupSock));
+    groupSock.sin_family = AF_INET;
+    groupSock.sin_addr.s_addr = inet_addr(health_args->health_udp_ip);
+    groupSock.sin_port = htons(health_args->health_udp_port);
 
-    si_other.sin_port = htons(health_args->health_udp_port);
+    //
+    // Set TTL
+    //
+    char ttl = 3;
 
-    if (inet_aton(health_args->health_udp_ip, &si_other.sin_addr) == 0)
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL,
+                   (char *)&ttl, sizeof(ttl)) < 0)
     {
-        multilog(health_args->log, LOG_ERR, "Health: Could not open a socket to health IP: call to inet_aton() failed.\n");
+        multilog(health_args->log, LOG_ERR, "Health: Could not set multicast TTL value.\n");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+
+    //
+    // Disable loopback so you do not receive your own datagrams.
+    //
+    char loopch = 0;
+
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP,
+                   (char *)&loopch, sizeof(loopch)) < 0)
+    {
+        multilog(health_args->log, LOG_ERR, "Health: Could not disable loopback during multicast init.\n");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+
+    //
+    // Set local interface for outbound multicast datagrams.
+    // The IP address specified must be associated with a local,
+    // multicast-capable interface.
+    //
+    struct in_addr localInterface;
+
+    localInterface.s_addr = inet_addr(health_args->health_udp_interface_ip);
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF,
+                   (char *)&localInterface,
+                   sizeof(localInterface)) < 0)
+    {
+        multilog(health_args->log, LOG_ERR, "Health: Could not configure local interface %s for multicast.\n", health_args->health_udp_interface_ip);
+        close(sock);
         exit(EXIT_FAILURE);
     }
 
     multilog(health_args->log, LOG_INFO, "Health: Sending health data via udp to %s:%d.\n", health_args->health_udp_ip, health_args->health_udp_port);
+
+    // Gather stats
+    health_udp_data_s out_udp_data;
+
+    // Version info
+    out_udp_data.version_major = MWAX_DB2FITS_VERSION_MAJOR;
+    out_udp_data.version_minor = MWAX_DB2FITS_VERSION_MINOR;
+    out_udp_data.version_build = MWAX_DB2FITS_VERSION_PATCH;
+
+    // Hostname
+    strncpy(out_udp_data.hostname, health_args->hostname, HOST_NAME_LEN);
+
+    // Time
+    out_udp_data.start_time = start_time;
 
     int quit = 0;
 
@@ -61,19 +123,6 @@ void *health_thread_fn(void *args)
         // Check quit status
         quit = get_quit();
 
-        // Gather stats
-        health_udp_data_s out_udp_data;
-
-        // Version info
-        out_udp_data.version_major = MWAX_DB2FITS_VERSION_MAJOR;
-        out_udp_data.version_minor = MWAX_DB2FITS_VERSION_MINOR;
-        out_udp_data.version_build = MWAX_DB2FITS_VERSION_PATCH;
-
-        // Hostname
-        strncpy(out_udp_data.hostname, health_args->hostname, HOST_NAME_LEN);
-
-        // Time
-        out_udp_data.start_time = start_time;
         out_udp_data.health_time = time(NULL);
         out_udp_data.up_time = difftime(out_udp_data.health_time, start_time);
 
@@ -85,9 +134,11 @@ void *health_thread_fn(void *args)
         }
 
         //send the message
-        if (sendto(sock, &out_udp_data, sizeof(health_udp_data_s), 0, (struct sockaddr *)&si_other, slen) == -1)
+        if (sendto(sock, &out_udp_data, sizeof(health_udp_data_s), 0,
+                   (struct sockaddr *)&groupSock,
+                   sizeof(groupSock)) < 0)
         {
-            multilog(health_args->log, LOG_ERR, "Health: Could not open a socket to health IP: call to sendto() failed.\n");
+            multilog(health_args->log, LOG_ERR, "Health: Could not send health multicast datagram: call to sendto() failed.\n");
             exit(EXIT_FAILURE);
         }
 

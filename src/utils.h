@@ -12,3 +12,4 @@
 int get_time_struct(struct tm **out_timeinfo);
 int get_time_string_for_fits(char *timestring);
 int get_time_string_for_log(char *timestring);
+int get_ip_address_for_interface(const char *interface, char *out_ip_address);

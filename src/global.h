@@ -21,12 +21,12 @@
 #define STATUS_SHUTTING_DOWN 2
 
 #define DEFAULT_FILE_SIZE_LIMIT 5368709120l // Default file size limit- 5GB
-#define MWAX_VERSION_STRING_LEN 10          // Size of version strings for mwax_u2s, mwax_db2correlate2db and mwax_db2fits
-#define MWAX_MODE_LEN 32                    // Size of the MODE value in PSRDADA header. E.g. "HW_LFILES","VOLTAGE_START","NO_CAPTURE", "QUIT"
-#define UTC_START_LEN 20                    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
-#define PROJ_ID_LEN 255                     // Size of the Project ID used by the MWA metadata database
+#define MWAX_VERSION_STRING_LEN 11          // Size of version strings for mwax_u2s, mwax_db2correlate2db and mwax_db2fits
+#define MWAX_MODE_LEN 33                    // Size of the MODE value in PSRDADA header. E.g. "HW_LFILES","VOLTAGE_START","NO_CAPTURE", "QUIT"
+#define UTC_START_LEN 21                    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
+#define PROJ_ID_LEN 256                     // Size of the Project ID used by the MWA metadata database
 #define HOST_NAME_LEN 64                    // Length of hostname
-#define IP_AS_STRING_LEN 15                 // xxx.xxx.xxx.xxx
+#define IP_AS_STRING_LEN 16                 // xxx.xxx.xxx.xxx
 #define XGPU_INPUT_STRIDE 16                // xGPU only allows inputs to be a multiple of 16
 #define COARSE_CHANNEL_MAX 255              // Highest possible coarse channel number
 #define CORR_COARSE_CHANNEL_MAX 23          // Highest possible correlator coarse channel number
@@ -38,6 +38,8 @@ typedef struct
     ipcbuf_t *header_block;
     ipcbuf_t *data_block;
     int status;
+    char *health_udp_interface;
+    char *health_udp_interface_ip;
     char *health_udp_ip;
     int health_udp_port;
     char hostname[HOST_NAME_LEN];
@@ -64,7 +66,7 @@ typedef struct dada_db_s
 
     // Stats
     char *stats_dir;
-    char stats_filename[PATH_MAX - 4];
+    char stats_filename[PATH_MAX - 4]; // -4 because we don't include the dot and extension
 
     // Metafits
     char *metafits_dir;
@@ -104,7 +106,7 @@ typedef struct dada_db_s
     int fine_chan_width_hz;
     int nfine_chan;
     int bandwidth_hz;
-    char multicast_ip[IP_AS_STRING_LEN + 1];
+    char multicast_ip[IP_AS_STRING_LEN];
     int multicast_port;
     int fscrunch_factor;
 

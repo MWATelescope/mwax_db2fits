@@ -19,6 +19,7 @@
 #include "fitsio.h"
 #include "health.h"
 #include "multilog.h"
+#include "utils.h"
 #include "version.h"
 
 /**
@@ -81,13 +82,14 @@ int main(int argc, char *argv[])
 
   // print all of the options (this is debug)
   multilog(g_ctx.log, LOG_INFO, "Command line options used:\n");
-  multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:    %x\n", globalArgs.input_db_key);
-  multilog(g_ctx.log, LOG_INFO, "* Metafits path:        %s\n", globalArgs.metafits_path);
-  multilog(g_ctx.log, LOG_INFO, "* Destination path:     %s\n", globalArgs.destination_path);
-  multilog(g_ctx.log, LOG_INFO, "* Stats path:           %s\n", globalArgs.stats_path);
-  multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:        %s\n", globalArgs.health_ip);
-  multilog(g_ctx.log, LOG_INFO, "* Health UDP Port:      %d\n", globalArgs.health_port);
-  multilog(g_ctx.log, LOG_INFO, "* FITS size limit:      %ld bytes\n", globalArgs.file_size_limit);
+  multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:     %x\n", globalArgs.input_db_key);
+  multilog(g_ctx.log, LOG_INFO, "* Metafits path:         %s\n", globalArgs.metafits_path);
+  multilog(g_ctx.log, LOG_INFO, "* Destination path:      %s\n", globalArgs.destination_path);
+  multilog(g_ctx.log, LOG_INFO, "* Stats path:            %s\n", globalArgs.stats_path);
+  multilog(g_ctx.log, LOG_INFO, "* Health send interface: %s\n", globalArgs.health_netiface);
+  multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:         %s\n", globalArgs.health_ip);
+  multilog(g_ctx.log, LOG_INFO, "* Health UDP Port:       %d\n", globalArgs.health_port);
+  multilog(g_ctx.log, LOG_INFO, "* FITS size limit:       %ld bytes\n", globalArgs.file_size_limit);
 
   // This tells us if we need to quit
   int quit = 0;

@@ -26,18 +26,20 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
     globalArgs->input_db_key = 0;
     globalArgs->metafits_path = NULL;
     globalArgs->destination_path = NULL;
+    globalArgs->health_netiface = NULL;
     globalArgs->health_ip = NULL;
     globalArgs->health_port = 0;
     globalArgs->stats_path = NULL;
     globalArgs->file_size_limit = -1;
 
-    static const char *optString = "k:m:d:i:p:l:v:?";
+    static const char *optString = "k:m:d:n:i:p:l:v:?";
 
     static const struct option longOpts[] =
         {
             {"key", required_argument, NULL, 'k'},
             {"metafits-path", required_argument, NULL, 'm'},
             {"destination-path", required_argument, NULL, 'd'},
+            {"health-netiface", required_argument, NULL, 'n'},
             {"health-ip", required_argument, NULL, 'i'},
             {"health-port", required_argument, NULL, 'p'},
             {"stats-path", required_argument, NULL, 's'},
@@ -60,6 +62,10 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
 
         case 'd':
             globalArgs->destination_path = optarg;
+            break;
+
+        case 'n':
+            globalArgs->health_netiface = optarg;
             break;
 
         case 'm':
@@ -120,6 +126,13 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
         exit(1);
     }
 
+    if (!globalArgs->health_netiface)
+    {
+        fprintf(stderr, "Error: health network interface (-n | --health-netiface) is mandatory.\n");
+        print_usage();
+        exit(1);
+    }
+
     if (!globalArgs->health_ip)
     {
         fprintf(stderr, "Error: health ip (-i | --health-ip) is mandatory.\n");
@@ -166,15 +179,16 @@ void print_usage()
     printf("visibility data from the MWA Crosse Correlator.\n");
     printf("It will then write out a fits file to be picked up by the \n");
     printf("archiver process.\n\n");
-    printf("  -k --key=KEY                Hexadecimal shared memory key\n");
-    printf("  -d --destination-path=PATH  Destination path for gpubox files\n");
-    printf("  -m --metafits-path=PATH     Metafits directory path\n");
-    printf("  -i --health-ip=IP           Health UDP destination ip address\n");
-    printf("  -p --health-port=PORT       Health UDP destination port\n");
-    printf("  -s --stats-path=PATH        Statistics directory path\n");
-    printf("  -l --file-size-limit=BYTES  FITS file size limit before splitting into a new file. Default=%ld bytes. 0=no splitting\n", DEFAULT_FILE_SIZE_LIMIT);
-    printf("  -v --version                Display version number\n");
-    printf("  -? --help                   This help text\n");
+    printf("  -k --key=KEY                      Hexadecimal shared memory key\n");
+    printf("  -d --destination-path=PATH        Destination path for gpubox files\n");
+    printf("  -m --metafits-path=PATH           Metafits directory path\n");
+    printf("  -n --health-netiface=INTERFACE    Health UDP network interface to send with\n");
+    printf("  -i --health-ip=IP                 Health UDP Multicast destination ip address\n");
+    printf("  -p --health-port=PORT             Health UDP Multicast destination port\n");
+    printf("  -s --stats-path=PATH              Statistics directory path\n");
+    printf("  -l --file-size-limit=BYTES        FITS file size limit before splitting into a new file. Default=%ld bytes. 0=no splitting\n", DEFAULT_FILE_SIZE_LIMIT);
+    printf("  -v --version                      Display version number\n");
+    printf("  -? --help                         This help text\n");
 }
 
 /**

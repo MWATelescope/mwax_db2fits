@@ -36,13 +36,6 @@
 #define MWA_FITS_KEY_MWAX_DB2CORRELATE2DB_VERSION "CBF_VER"
 #define MWA_FITS_KEY_MWAX_DB2FITS_VERSION "DB2F_VER"
 
-/*typedef struct 
-{
-    long obsid;
-    float inttime;
-    char* project;
-} metafits_info;*/
-
 int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
 int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
 int close_fits(dada_client_t *client, fitsfile **fptr);
