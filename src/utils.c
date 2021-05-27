@@ -16,6 +16,9 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+
+#include <ifaddrs.h>
+
 #include "global.h"
 
 /**
@@ -81,37 +84,40 @@ int get_time_string_for_log(char *timestring)
  */
 int get_ip_address_for_interface(const char *interface, char *out_ip_address)
 {
-    int sock;
-    struct ifreq ifr;
+    struct ifaddrs *id;
 
-    // Get a socket
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    // get a struct containing info about all interfaces
+    if (getifaddrs(&id) == 0)
+    {
+        struct ifaddrs *iface_item = id;
 
-    if (sock == -1)
+        // loop through all interfaces
+        while (iface_item)
+        {
+            // Find the correct interface
+            if (iface_item->ifa_addr && iface_item->ifa_addr->sa_family == AF_INET && strcmp(iface_item->ifa_name, interface) == 0)
+            {
+                struct sockaddr_in *pAddr = (struct sockaddr_in *)iface_item->ifa_addr;
+
+                /* copy result into output buffer */
+                sprintf(out_ip_address, "%s", inet_ntoa(pAddr->sin_addr));
+
+                // Free the memory used by getifaddrs
+                freeifaddrs(id);
+
+                return EXIT_SUCCESS;
+            }
+
+            // Get next interface
+            iface_item = iface_item->ifa_next;
+        }
+
+        freeifaddrs(id);
+
+        return EXIT_FAILURE;
+    }
+    else
     {
         return EXIT_FAILURE;
     }
-
-    /* I want to get an IPv4 IP address */
-    ifr.ifr_addr.sa_family = AF_INET;
-
-    /* I want IP address attached to "eth0" */
-    strncpy(ifr.ifr_name, interface, IFNAMSIZ - 1);
-
-    // Get the address if possible
-    if (ioctl(sock, SIOCGIFADDR, &ifr) != 0)
-    {
-        return EXIT_FAILURE;
-    }
-
-    // Close the socket
-    if (sock)
-    {
-        close(sock);
-    }
-
-    /* copy result into output buffer */
-    strncpy(out_ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), IP_AS_STRING_LEN);
-
-    return EXIT_SUCCESS;
 }

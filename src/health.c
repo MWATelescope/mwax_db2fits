@@ -30,14 +30,18 @@ void *health_thread_fn(void *args)
 
     multilog(health_args->log, LOG_INFO, "Health: Thread started.\n");
 
-    // Get the ip for the outbound multicast interface for health
-    char out_ip_address[IP_AS_STRING_LEN] = "";
+    health_args->health_udp_interface_ip = malloc(sizeof(char) * IP_AS_STRING_LEN);
 
-    if (get_ip_address_for_interface(health_args->health_udp_interface, out_ip_address) != EXIT_SUCCESS)
+    // Get the ip for the outbound multicast interface for health
+    multilog(health_args->log, LOG_INFO, "Health: Getting IP address for interface: %s.\n", health_args->health_udp_interface);
+
+    if (get_ip_address_for_interface(health_args->health_udp_interface, health_args->health_udp_interface_ip) != EXIT_SUCCESS)
     {
         multilog(health_args->log, LOG_ERR, "Health: Could not get IP address for interface %s.\n", health_args->health_udp_interface);
         exit(EXIT_FAILURE);
     }
+
+    multilog(health_args->log, LOG_INFO, "Health: IP address for interface %s is %s.\n", health_args->health_udp_interface, health_args->health_udp_interface_ip);
 
     // Initialise UDP socket
     int sock;
@@ -69,6 +73,7 @@ void *health_thread_fn(void *args)
         close(sock);
         exit(EXIT_FAILURE);
     }
+    multilog(health_args->log, LOG_INFO, "Health: Multicast TTL is set for %s.\n", health_args->health_udp_interface_ip);
 
     //
     // Disable loopback so you do not receive your own datagrams.
@@ -82,6 +87,7 @@ void *health_thread_fn(void *args)
         close(sock);
         exit(EXIT_FAILURE);
     }
+    multilog(health_args->log, LOG_INFO, "Health: Multicast Loopback is disabled.\n");
 
     //
     // Set local interface for outbound multicast datagrams.
@@ -100,7 +106,7 @@ void *health_thread_fn(void *args)
         exit(EXIT_FAILURE);
     }
 
-    multilog(health_args->log, LOG_INFO, "Health: Sending health data via udp to %s:%d.\n", health_args->health_udp_ip, health_args->health_udp_port);
+    multilog(health_args->log, LOG_INFO, "Health: Multicast configured successfully on %s (%s) going to %s:%d.\n", health_args->health_udp_interface, health_args->health_udp_interface_ip, health_args->health_udp_ip, health_args->health_udp_port);
 
     // Gather stats
     health_udp_data_s out_udp_data;

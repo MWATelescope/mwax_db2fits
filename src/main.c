@@ -144,9 +144,6 @@ int main(int argc, char *argv[])
   g_ctx.block_size = ipcbuf_get_bufsz((ipcbuf_t *)(client->data_block));
   multilog(g_ctx.log, LOG_INFO, "main(): Block size (one integration) is %lu bytes.\n", g_ctx.block_size);
 
-  // Launch Health thread
-  pthread_t health_thread;
-
   // Zero the structure
   memset(&g_health, 0, sizeof(g_health));
 
@@ -154,6 +151,7 @@ int main(int argc, char *argv[])
   g_health.status = STATUS_RUNNING;
   g_health.header_block = client->header_block;
   g_health.data_block = (ipcbuf_t *)client->data_block;
+  g_health.health_udp_interface = globalArgs.health_netiface;
   g_health.health_udp_ip = globalArgs.health_ip;
   g_health.health_udp_port = globalArgs.health_port;
   g_health.obs_id = 0;
@@ -162,6 +160,9 @@ int main(int argc, char *argv[])
   strncpy(g_health.hostname, g_ctx.hostname, HOST_NAME_LEN);
 
   multilog(g_ctx.log, LOG_INFO, "main():Launching health thread...\n");
+
+  // Launch Health thread
+  pthread_t health_thread;
   pthread_create(&health_thread, NULL, health_thread_fn, (void *)&g_health);
 
   // main loop
