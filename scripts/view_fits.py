@@ -2,7 +2,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-from pymwalib.common import CorrelatorVersion
+from pymwalib.common import MWAVersion
 import pymwalib.correlator_context
 
 
@@ -54,15 +54,15 @@ class ViewFITSArgs:
         print(f"Opening with pymwalib using metafits file {self.metafits_filename} and data file {self.filename}...")
         self.context = pymwalib.correlator_context.CorrelatorContext(self.metafits_filename, [self.filename,])
         print(self.context.coarse_channels)
-        self.correlator_version: pymwalib.common.CorrelatorVersion = self.context.correlator_metadata.corr_version
-        self.pols = self.context.metafits_metadata.num_visibility_pols  # xx,xy,yx,yy
+        self.correlator_version: pymwalib.common.MWAVersion = self.context.mwa_version
+        self.pols = self.context.metafits_context.num_visibility_pols  # xx,xy,yx,yy
 
         # in v2 NAXIS1 == fine channels * pols * r,i
         # in v2 NAXIS2 == baselines
         # Get number of tiles based on the number of signal chains
-        self.fits_tiles = len(self.context.antennas)
-        self.chan_x_pols_x_vals = self.context.metafits_metadata.num_corr_fine_chans_per_coarse * self.pols * self.values
-        self.fits_channels = self.context.metafits_metadata.num_corr_fine_chans_per_coarse
+        self.fits_tiles = len(self.context.metafits_context.antennas)
+        self.chan_x_pols_x_vals = self.context.metafits_context.num_corr_fine_chans_per_coarse * self.pols * self.values
+        self.fits_channels = self.context.metafits_context.num_corr_fine_chans_per_coarse
         self.fits_has_weights = True
 
         # Check mode
@@ -90,7 +90,7 @@ class ViewFITSArgs:
             exit(-1)
 
         # Check time steps
-        self.fits_time_steps = self.context.correlator_metadata.num_timesteps
+        self.fits_time_steps = self.context.num_timesteps
 
         if self.time_step1 == -1:
             self.time_step1 = 1
@@ -223,10 +223,10 @@ def peek_fits(program_args: ViewFITSArgs):
     raw_dump_file = None
     plot_dump_file = None
 
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
-        filename = f"{program_args.context.metafits_metadata.obs_id}_mwax.csv"
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
+        filename = f"{program_args.context.metafits_context.obs_id}_mwax.csv"
     else:
-        filename = f"{program_args.context.metafits_metadata.obs_id}_mwa.csv"
+        filename = f"{program_args.context.metafits_context.obs_id}_mwa.csv"
 
     # Open a file for dumping the plot values
     if program_args.dumpplot:
@@ -275,7 +275,7 @@ def peek_fits(program_args: ViewFITSArgs):
         # Read data
         data = program_args.context.read_by_baseline(timestep.index,
                                                      0)
-        data = data.reshape(program_args.context.metafits_metadata.num_baselines, program_args.chan_x_pols_x_vals)
+        data = data.reshape(program_args.context.metafits_context.num_baselines, program_args.chan_x_pols_x_vals)
 
         baseline = 0
         selected_baseline = 0
@@ -448,7 +448,7 @@ def do_ppd_plot(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_dat
     print("Saving figure...")
 
     # Save the final plot to disk
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
         filename = f"ppd_plot_mwax.png"
     else:
         filename = f"ppd_plot_mwa.png"
@@ -521,7 +521,7 @@ def do_ppd_plot2(title, program_args: ViewFITSArgs, plot_ppd_data_x, plot_ppd_da
     print("Saving figure...")
 
     # Save the final plot to disk
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
         filename = f"ppd_plot2_mwax.png"
     else:
         filename = f"ppd_plot2_mwa.png"
@@ -609,7 +609,7 @@ def do_grid_plot(title, program_args: ViewFITSArgs, plot_grid_data):
             plot_col = 0
 
     print("Saving figure...")
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
         filename = f"grid_plot_mwax.png"
     else:
         filename = f"grid_plot_mwa.png"
@@ -690,7 +690,7 @@ def do_grid_plot2(title, program_args: ViewFITSArgs, plot_grid_data):
             plot_col = 0
 
     print("Saving figure...")
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
         filename = f"grid_plot2_{program_args.grid_pol}_mwax.png"
     else:
         filename = f"grid_plot2_{program_args.grid_pol}_mwa.png"
@@ -781,7 +781,7 @@ def do_phase_plot(title, program_args: ViewFITSArgs, plot_phase_data_x, plot_pha
 
     print("Saving figure...")
     # Save final plot to disk
-    if program_args.correlator_version == CorrelatorVersion.V2.value:
+    if program_args.correlator_version == MWAVersion.CorrMWAXv2.value:
         filename = f"phase_plot_mwax.png"
     else:
         filename = f"phase_plot_mwa.png"
