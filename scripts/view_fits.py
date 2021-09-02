@@ -274,7 +274,7 @@ def peek_fits(program_args: ViewFITSArgs):
 
         # Read data
         data = program_args.context.read_by_baseline(timestep.index,
-                                                     0)
+                                                     program_args.context.provided_coarse_chan_indices[0])
         data = data.reshape(program_args.context.metafits_context.num_baselines, program_args.chan_x_pols_x_vals)
 
         baseline = 0
