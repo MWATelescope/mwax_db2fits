@@ -96,9 +96,11 @@ int main(int argc, char *argv[])
   initialise_quit(); // Setup quit mutex
   set_quit(quit);
 
-  // Catch SIGINT
-  multilog(g_ctx.log, LOG_INFO, "main(): Configured to catching SIGINT.\n");
+  // Catch SIGINT and SIGTERM
+  multilog(g_ctx.log, LOG_INFO, "main(): Configured to catch SIGINT.\n");
   signal(SIGINT, sig_handler);
+  multilog(g_ctx.log, LOG_INFO, "main(): Configured to catch SIGTERM.\n");
+  signal(SIGTERM, sig_handler);
 
   // create the input HDU
   multilog(g_ctx.log, LOG_INFO, "main(): Creating HDU handle...\n");
