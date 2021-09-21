@@ -205,6 +205,8 @@ int main(int argc, char *argv[])
     }
   }
 
+  multilog(g_ctx.log, LOG_INFO, "mwax_db2fits stopping...\n");
+
   // Wait for health thread to terminate
   pthread_join(health_thread, NULL);
 
@@ -218,6 +220,8 @@ int main(int argc, char *argv[])
   // destroy HDUs and read client
   dada_hdu_destroy(in_hdu);
   dada_client_destroy(client);
+
+  multilog(g_ctx.log, LOG_INFO, "mwax_db2fits stopped\n");
 
   // close log
   multilog_close(logger);
