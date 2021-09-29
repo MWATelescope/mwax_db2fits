@@ -29,7 +29,6 @@
 #define IP_AS_STRING_LEN 16                 // xxx.xxx.xxx.xxx
 #define XGPU_INPUT_STRIDE 16                // xGPU only allows inputs to be a multiple of 16
 #define COARSE_CHANNEL_MAX 255              // Highest possible coarse channel number
-#define CORR_COARSE_CHANNEL_MAX 23          // Highest possible correlator coarse channel number
 #define INT_TIME_MSEC_MIN 200               // Minimum integration time (milliseconds)
 
 typedef struct

@@ -270,9 +270,10 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   }
 
   // CORR_CHAN
-  int corr_chan = ctx->corr_coarse_channel;
+  // This is 0 based, whereas the PSRDADA value is 1 based.
+  int corr_chan = ctx->corr_coarse_channel - 1;
 
-  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_CHAN, &(corr_chan), "Correlator coarse channel", &status))
+  if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_CORR_CHAN, &(corr_chan), "Correlator coarse channel (0 to N-1)", &status))
   {
     char error_text[30] = "";
     fits_get_errstatus(status, error_text);
