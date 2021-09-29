@@ -346,19 +346,23 @@ int dada_dbfits_open(dada_client_t *client)
       ctx->fits_file_number++;
     }
 
-    /* Create fits file for output                                */
-    /* Work out the name of the file using the UTC START          */
-    /* Convert the UTC_START from the header format: YYYY-MM-DD-hh:mm:ss into YYYYMMDDhhmmss  */
-    int year, month, day, hour, minute, second;
-    sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);
-
-    /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_chCCC_FFF.fits */
-    snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%03d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
-
-    if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename))
+    // Only create a new fits file if we have an obsid- if we don't it means we had an in progress obsid
+    if (ctx->obs_id != 0)
     {
-      multilog(log, LOG_ERR, "dada_dbfits_open(): Error creating new fits file.\n");
-      return -1;
+      /* Create fits file for output                                */
+      /* Work out the name of the file using the UTC START          */
+      /* Convert the UTC_START from the header format: YYYY-MM-DD-hh:mm:ss into YYYYMMDDhhmmss  */
+      int year, month, day, hour, minute, second;
+      sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+
+      /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_chCCC_FFF.fits */
+      snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%03d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+
+      if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename))
+      {
+        multilog(log, LOG_ERR, "dada_dbfits_open(): Error creating new fits file.\n");
+        return -1;
+      }
     }
 
     // Reset file size
