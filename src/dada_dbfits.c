@@ -199,7 +199,7 @@ int dada_dbfits_open(dada_client_t *client)
         }
 
         /* Correlator coarse channel number must be in range 0-23 */
-        if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel < CORR_COARSE_CHANNEL_MAX))
+        if (!(ctx->corr_coarse_channel >= 0 && ctx->corr_coarse_channel <= CORR_COARSE_CHANNEL_MAX))
         {
           multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not between 0 and %d.\n", HEADER_CORR_COARSE_CHANNEL, CORR_COARSE_CHANNEL_MAX);
           return -1;
