@@ -104,7 +104,7 @@ int dada_dbfits_open(dada_client_t *client)
     return -1;
   }
 
-  int new_obs_id = 0;
+  int is_new_obs_id = 0;
 
   // Check this obs_id against our 'in progress' obsid
   if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= ctx->fits_file_size_limit)
@@ -113,7 +113,7 @@ int dada_dbfits_open(dada_client_t *client)
     if (ctx->obs_id != this_obs_id)
     {
       // Set this flag so we know whats going on later in this function
-      new_obs_id = 1;
+      is_new_obs_id = 1;
 
       if (ctx->fits_ptr != NULL)
       {
@@ -142,202 +142,13 @@ int dada_dbfits_open(dada_client_t *client)
       ctx->fits_file_size = 0;
     }
 
-    if (ctx->obs_id != this_obs_id)
+    // Check- has the obs id changed?
+    if (is_new_obs_id == 1)
     {
-      // If it is a new observation (ctx->obs_id != this_obs_id)
-      // But the this_obs_id != this_subobs_id, then it means we are not at the start of an observation and we should skip it
-      if (this_obs_id != this_subobs_id)
+      // Yes, this is now a new observation
+      if (process_new_observation(client, this_obs_id, this_subobs_id) != EXIT_SUCCESS)
       {
-        multilog(log, LOG_WARNING, "dada_dbfil_open(): Detected an in progress observation (obs_id: %lu / sub_obs_id: %lu). Skipping this observation.\n", this_obs_id, this_subobs_id);
-        // Set obs and subobs to 0 so the io and close methods know we have nothing to do
-        ctx->obs_id = 0;
-        ctx->subobs_id = 0;
-      }
-      else
-      {
-        //
-        // Do this for new observations only
-        //
-
-        // initialise our structure
-        ctx->block_open = 0;
-        ctx->bytes_read = 0;
-        ctx->bytes_written = 0;
-        ctx->curr_block = 0;
-        ctx->block_number = 0;
-
-        // fits info
-        strncpy(ctx->fits_filename, "", PATH_MAX);
-
-        // Set the obsid & sub obsid
-        ctx->obs_id = this_obs_id;
-        ctx->subobs_id = this_subobs_id;
-
-        // Read in all of the info from the header into our struct
-        if (read_dada_header(client))
-        {
-          // Error processing in header!
-          multilog(log, LOG_ERR, "dada_dbfits_open(): Error processing header.\n");
-          return -1;
-        }
-
-        /*                          */
-        /* Sanity check what we got */
-        /*                          */
-        /* Do have a positive number of inputs (tile * pol) and are they a multiple of 16? */
-        if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % XGPU_INPUT_STRIDE == 0)))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0 or a multiple of %d (as required by xGPU).\n", HEADER_NINPUTS_XGPU, XGPU_INPUT_STRIDE);
-          return -1;
-        }
-
-        /* Coarse channel number needs to be in range 0-255 */
-        if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <= COARSE_CHANNEL_MAX))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not between 0 and %d.\n", HEADER_COARSE_CHANNEL, COARSE_CHANNEL_MAX);
-          return -1;
-        }
-
-        /* Correlator coarse channel number must be in range 1-N */
-        if (!(ctx->corr_coarse_channel >= 1))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not equal to or greater than 1.\n", HEADER_CORR_COARSE_CHANNEL);
-          return -1;
-        }
-
-        /* ProjectID needs to be less than 255 chars */
-        if (!(strlen(ctx->proj_id) <= PROJ_ID_LEN))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s must be %d characters long.\n", HEADER_PROJ_ID, PROJ_ID_LEN);
-          return -1;
-        }
-
-        /* Bandwidth in Hz needs to be > 0 */
-        if (!(ctx->bandwidth_hz > 0))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0.\n", HEADER_BANDWIDTH_HZ);
-          return -1;
-        }
-
-        /* fsscrunch factor needs to be > 0 */
-        if (!(ctx->fscrunch_factor > 0))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0.\n", HEADER_FSCRUNCH_FACTOR);
-          return -1;
-        }
-
-        /* polarisations needs to be > 0 */
-        if (!(ctx->npol > 0))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0.\n", HEADER_NPOL);
-          return -1;
-        }
-
-        /* fine channel width must be at least 1hz and at most the bandwidth of a coarse channel */
-        if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= ctx->bandwidth_hz))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not between 1 Hz and %ul Hz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
-          return -1;
-        }
-
-        /* We have NFINE_CHAN and we have FINE_CHAN_WIDTH - do these match? */
-        if (!((int)(ctx->bandwidth_hz / ctx->nfine_chan) == ctx->fine_chan_width_hz))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s does not match based on %s and %s.\n", HEADER_FINE_CHAN_WIDTH_HZ, HEADER_BANDWIDTH_HZ, HEADER_NFINE_CHAN);
-          return -1;
-        }
-
-        /* seconds per sub observation must be > 0 */
-        if (!(ctx->secs_per_subobs > 0))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0.\n", HEADER_SECS_PER_SUBOBS);
-          return -1;
-        }
-
-        /* Is exposure time min of 8 secs and a multiple of 8? */
-        if (!(ctx->exposure_sec >= ctx->secs_per_subobs && (ctx->exposure_sec % ctx->secs_per_subobs == 0)))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than or equal to %d or a multiple of %d seconds.\n", HEADER_EXPOSURE_SECS, ctx->secs_per_subobs, ctx->secs_per_subobs);
-          return -1;
-        }
-
-        /* integration time needs to be at least 200ms and at most msec_per_subobs */
-        int msec_per_subobs = ctx->secs_per_subobs * 1000;
-        if (!(ctx->int_time_msec >= INT_TIME_MSEC_MIN && ctx->int_time_msec <= msec_per_subobs))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not between than %d ms and %d ms.\n", HEADER_INT_TIME_MSEC, msec_per_subobs * 1000, INT_TIME_MSEC_MIN);
-          return -1;
-        }
-
-        /* transfer size must be > 0*/
-        if (!(ctx->transfer_size > 0))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than 0.\n", HEADER_TRANSFER_SIZE);
-          return -1;
-        }
-
-        /* bits per valye must be at least 8 and a multiple of a byte (8) */
-        if (!(ctx->nbit >= 8 && (ctx->nbit % 8 == 0)))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s is not greater than or equal to 8 or a multiple of 8 bits.\n", HEADER_NBIT);
-          return -1;
-        }
-
-        /* unix time msec must be between 0 and 999 */
-        if (!(ctx->unix_time_msec >= 0 || ctx->unix_time_msec < 1000))
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s must be between 0 and 999 milliseconds.\n", HEADER_UNIXTIME_MSEC);
-          return -1;
-        }
-
-        // Calculate baselines
-        ctx->nbaselines = (ctx->ninputs_xgpu * (ctx->ninputs_xgpu + 2)) / 8;
-
-        //
-        // Check transfer size read in from header matches what we expect from the other params
-        //
-
-        // Should be 4 bytes per float (32 bits) x2 for r,i
-        int bytes_per_float = ctx->nbit / 8;
-        int bytes_per_complex = bytes_per_float * 2;
-
-        // Integrations per sub obs
-        ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
-
-        // One fine channel = pol*pol*bytes_per_complex*baselines
-        ctx->expected_transfer_size_of_one_fine_channel = ctx->npol * ctx->npol * bytes_per_complex * ctx->nbaselines;
-
-        // weights (in one integration) = (pol * pol * bytes per weight * baselines)
-        ctx->expected_transfer_size_of_weights = ctx->npol * ctx->npol * bytes_per_float * ctx->nbaselines;
-
-        // one fine chan * number of fine channels
-        ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
-
-        // one integration + weights
-        ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_weights;
-
-        // one integration * number of integrations
-        ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
-
-        // one sub obs + (weights * number of integrations per sub obs)
-        ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs + (ctx->expected_transfer_size_of_weights * ctx->no_of_integrations_per_subobs);
-
-        // The number of bytes should never exceed transfer size
-        if (ctx->expected_transfer_size_of_subobs_plus_weights > ctx->transfer_size)
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs_plus_weights);
-          return -1;
-        }
-
-        // Also confirm that the integration size can fit into the ringbuffer size
-        if (ctx->expected_transfer_size_of_integration_plus_weights > ctx->block_size)
-        {
-          multilog(log, LOG_ERR, "dada_dbfits_open(): Ring buffer block size (%lu bytes) is less than the calculated size of an integration from header parameters (%lu bytes).\n", ctx->block_size, ctx->expected_transfer_size_of_integration_plus_weights);
-          return -1;
-        }
-
-        // Reset the filenumber
-        ctx->fits_file_number = 0;
+        return -1;
       }
     }
     else
@@ -346,7 +157,7 @@ int dada_dbfits_open(dada_client_t *client)
       ctx->fits_file_number++;
     }
 
-    // Only create a new fits file if we have an obsid- if we don't it means we had an in progress obsid
+    // Only create a new fits file if we have an obsid- if we don't it means we had an in progress obsid we're skipping
     if (ctx->obs_id != 0)
     {
       /* Create fits file for output                                */
@@ -370,7 +181,7 @@ int dada_dbfits_open(dada_client_t *client)
   }
 
   /* This is a continuation of an existing observation */
-  if (new_obs_id == 0)
+  if (is_new_obs_id == 0)
   {
     multilog(log, LOG_INFO, "dada_dbfits_open(): continuing %lu...\n", ctx->obs_id);
 
@@ -739,6 +550,128 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
 
 /**
  * 
+ *  @brief This validates the PSRDADA attributes in the context structure which have been read from the header
+ *  @param[in] client A pointer to the dada_client_t object. 
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
+ */
+int validate_header(dada_client_t *client)
+{
+  assert(client != 0);
+  dada_db_s *ctx = (dada_db_s *)client->context;
+
+  multilog_t *log = (multilog_t *)client->log;
+
+  /* Do have a positive number of inputs (tile * pol) and are they a multiple of 16? */
+  if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % XGPU_INPUT_STRIDE == 0)))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0 or a multiple of %d (as required by xGPU).\n", HEADER_NINPUTS_XGPU, XGPU_INPUT_STRIDE);
+    return -1;
+  }
+
+  /* Coarse channel number needs to be in range 0-255 */
+  if (!(ctx->coarse_channel >= 0 && ctx->coarse_channel <= COARSE_CHANNEL_MAX))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not between 0 and %d.\n", HEADER_COARSE_CHANNEL, COARSE_CHANNEL_MAX);
+    return -1;
+  }
+
+  /* Correlator coarse channel number must be in range 1-N */
+  if (!(ctx->corr_coarse_channel >= 1))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not equal to or greater than 1.\n", HEADER_CORR_COARSE_CHANNEL);
+    return -1;
+  }
+
+  /* ProjectID needs to be less than 255 chars */
+  if (!(strlen(ctx->proj_id) <= PROJ_ID_LEN))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s must be %d characters long.\n", HEADER_PROJ_ID, PROJ_ID_LEN);
+    return -1;
+  }
+
+  /* Bandwidth in Hz needs to be > 0 */
+  if (!(ctx->bandwidth_hz > 0))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_BANDWIDTH_HZ);
+    return -1;
+  }
+
+  /* fsscrunch factor needs to be > 0 */
+  if (!(ctx->fscrunch_factor > 0))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_FSCRUNCH_FACTOR);
+    return -1;
+  }
+
+  /* polarisations needs to be > 0 */
+  if (!(ctx->npol > 0))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_NPOL);
+    return -1;
+  }
+
+  /* fine channel width must be at least 1hz and at most the bandwidth of a coarse channel */
+  if (!(ctx->fine_chan_width_hz >= 1 && ctx->fine_chan_width_hz <= ctx->bandwidth_hz))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not between 1 Hz and %ul Hz.\n", HEADER_FINE_CHAN_WIDTH_HZ, ctx->bandwidth_hz);
+    return -1;
+  }
+
+  /* We have NFINE_CHAN and we have FINE_CHAN_WIDTH - do these match? */
+  if (!((int)(ctx->bandwidth_hz / ctx->nfine_chan) == ctx->fine_chan_width_hz))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s does not match based on %s and %s.\n", HEADER_FINE_CHAN_WIDTH_HZ, HEADER_BANDWIDTH_HZ, HEADER_NFINE_CHAN);
+    return -1;
+  }
+
+  /* seconds per sub observation must be > 0 */
+  if (!(ctx->secs_per_subobs > 0))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_SECS_PER_SUBOBS);
+    return -1;
+  }
+
+  /* Is exposure time min of 8 secs and a multiple of 8? */
+  if (!(ctx->exposure_sec >= ctx->secs_per_subobs && (ctx->exposure_sec % ctx->secs_per_subobs == 0)))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than or equal to %d or a multiple of %d seconds.\n", HEADER_EXPOSURE_SECS, ctx->secs_per_subobs, ctx->secs_per_subobs);
+    return -1;
+  }
+
+  /* integration time needs to be at least 200ms and at most msec_per_subobs */
+  int msec_per_subobs = ctx->secs_per_subobs * 1000;
+  if (!(ctx->int_time_msec >= INT_TIME_MSEC_MIN && ctx->int_time_msec <= msec_per_subobs))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not between than %d ms and %d ms.\n", HEADER_INT_TIME_MSEC, msec_per_subobs * 1000, INT_TIME_MSEC_MIN);
+    return -1;
+  }
+
+  /* transfer size must be > 0*/
+  if (!(ctx->transfer_size > 0))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_TRANSFER_SIZE);
+    return -1;
+  }
+
+  /* bits per valye must be at least 8 and a multiple of a byte (8) */
+  if (!(ctx->nbit >= 8 && (ctx->nbit % 8 == 0)))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than or equal to 8 or a multiple of 8 bits.\n", HEADER_NBIT);
+    return -1;
+  }
+
+  /* unix time msec must be between 0 and 999 */
+  if (!(ctx->unix_time_msec >= 0 || ctx->unix_time_msec < 1000))
+  {
+    multilog(log, LOG_ERR, "validate_heder(): %s must be between 0 and 999 milliseconds.\n", HEADER_UNIXTIME_MSEC);
+    return -1;
+  }
+
+  return EXIT_SUCCESS;
+}
+
+/**
+ * 
  *  @brief This reads a PSRDADA header and populates our context structure and dumps the contents into a debug log
  *  @param[in] client A pointer to the dada_client_t object. 
  *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
@@ -951,6 +884,115 @@ int read_dada_header(dada_client_t *client)
     multilog(log, LOG_ERR, "read_dada_header(): Error setting health data");
     return -1;
   }
+
+  return EXIT_SUCCESS;
+}
+
+/**
+ * 
+ *  @brief This code peforms steps necessary to setup for a new observation
+ *  @param[in] client A pointer to the dada_client_t object. 
+ *  @param[in] new_obs_id The new obsid as read from the PSDADA header. 
+ *  @param[in] new_subobs_id The new subobsid as read from the PSRDADA header. 
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
+ */
+int process_new_observation(dada_client_t *client, long new_obs_id, long new_subobs_id)
+{
+  assert(client != 0);
+  dada_db_s *ctx = (dada_db_s *)client->context;
+
+  assert(ctx->log != 0);
+  multilog_t *log = (multilog_t *)ctx->log;
+
+  // But the new_obs_id != new_subobs_id, then it means we are not at the start of an observation and we should skip it
+  if (new_obs_id != new_subobs_id)
+  {
+    multilog(log, LOG_WARNING, "dada_dbfil_open(): Detected an in progress observation (obs_id: %lu / sub_obs_id: %lu). Skipping this observation.\n", new_obs_id, new_subobs_id);
+    // Set obs and subobs to 0 so the io and close methods know we have nothing to do
+    ctx->obs_id = 0;
+    ctx->subobs_id = 0;
+
+    return EXIT_SUCCESS;
+  }
+
+  // initialise our structure
+  ctx->block_open = 0;
+  ctx->bytes_read = 0;
+  ctx->bytes_written = 0;
+  ctx->curr_block = 0;
+  ctx->block_number = 0;
+
+  // fits info
+  strncpy(ctx->fits_filename, "", PATH_MAX);
+
+  // Set the obsid & sub obsid
+  ctx->obs_id = new_obs_id;
+  ctx->subobs_id = new_subobs_id;
+
+  // Read in all of the info from the header into our struct
+  if (read_dada_header(client))
+  {
+    // Error processing in header!
+    multilog(log, LOG_ERR, "dada_dbfits_open(): Error processing header.\n");
+    return -1;
+  }
+
+  /*                          */
+  /* Sanity check what we got */
+  /*                          */
+  if (validate_header(client) != EXIT_SUCCESS)
+  {
+    return -1;
+  }
+
+  // Calculate baselines
+  ctx->nbaselines = (ctx->ninputs_xgpu * (ctx->ninputs_xgpu + 2)) / 8;
+
+  //
+  // Check transfer size read in from header matches what we expect from the other params
+  //
+
+  // Should be 4 bytes per float (32 bits) x2 for r,i
+  int bytes_per_float = ctx->nbit / 8;
+  int bytes_per_complex = bytes_per_float * 2;
+
+  // Integrations per sub obs
+  ctx->no_of_integrations_per_subobs = (ctx->secs_per_subobs * 1000) / ctx->int_time_msec;
+
+  // One fine channel = pol*pol*bytes_per_complex*baselines
+  ctx->expected_transfer_size_of_one_fine_channel = ctx->npol * ctx->npol * bytes_per_complex * ctx->nbaselines;
+
+  // weights (in one integration) = (pol * pol * bytes per weight * baselines)
+  ctx->expected_transfer_size_of_weights = ctx->npol * ctx->npol * bytes_per_float * ctx->nbaselines;
+
+  // one fine chan * number of fine channels
+  ctx->expected_transfer_size_of_integration = ctx->expected_transfer_size_of_one_fine_channel * ctx->nfine_chan;
+
+  // one integration + weights
+  ctx->expected_transfer_size_of_integration_plus_weights = ctx->expected_transfer_size_of_integration + ctx->expected_transfer_size_of_weights;
+
+  // one integration * number of integrations
+  ctx->expected_transfer_size_of_subobs = ctx->expected_transfer_size_of_integration * ctx->no_of_integrations_per_subobs;
+
+  // one sub obs + (weights * number of integrations per sub obs)
+  ctx->expected_transfer_size_of_subobs_plus_weights = ctx->expected_transfer_size_of_subobs + (ctx->expected_transfer_size_of_weights * ctx->no_of_integrations_per_subobs);
+
+  // The number of bytes should never exceed transfer size
+  if (ctx->expected_transfer_size_of_subobs_plus_weights > ctx->transfer_size)
+  {
+    multilog(log, LOG_ERR, "dada_dbfits_open(): %s provided in header (%lu bytes) is not large enough for a subobservation size of (%lu bytes).\n", HEADER_TRANSFER_SIZE, ctx->transfer_size, ctx->expected_transfer_size_of_subobs_plus_weights);
+    return -1;
+  }
+
+  // Also confirm that the integration size can fit into the ringbuffer size
+  if (ctx->expected_transfer_size_of_integration_plus_weights > ctx->block_size)
+  {
+    multilog(log, LOG_ERR, "dada_dbfits_open(): Ring buffer block size (%lu bytes) is less than the calculated size of an integration from header parameters (%lu bytes).\n", ctx->block_size, ctx->expected_transfer_size_of_integration_plus_weights);
+    return -1;
+  }
+
+  // Reset the filenumber
+  ctx->fits_file_number = 0;
 
   return EXIT_SUCCESS;
 }
