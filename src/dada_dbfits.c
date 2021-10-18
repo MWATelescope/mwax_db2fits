@@ -183,7 +183,10 @@ int dada_dbfits_open(dada_client_t *client)
   /* This is a continuation of an existing observation */
   if (is_new_obs_id == 0)
   {
-    multilog(log, LOG_INFO, "dada_dbfits_open(): continuing %lu...\n", ctx->obs_id);
+    // Update the sub obs id
+    ctx->subobs_id = this_subobs_id;
+
+    multilog(log, LOG_INFO, "dada_dbfits_open(): continuing %lu (sub observation id: %lu)...\n", ctx->obs_id, ctx->subobs_id);
 
     /* Get the duration */
     int new_duration_sec = 0;
