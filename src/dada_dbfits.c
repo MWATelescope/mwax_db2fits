@@ -126,7 +126,7 @@ int dada_dbfits_open(dada_client_t *client)
     }
     else
     {
-      multilog(log, LOG_INFO, "dada_dbfits_open(): Current file size (%lu bytes) exceeds max size (%lu bytes) of a fits file. Closing %s, Starting new file...\n", ctx->fits_file_size, ctx->fits_file_size_limit, ctx->fits_filename);
+      multilog(log, LOG_INFO, "dada_dbfits_open(): Current file size (%lu bytes) exceeds max size (%lu bytes) of a fits file. Closing %s, Starting new file...\n", ctx->fits_file_size, ctx->fits_file_size_limit, ctx->temp_fits_filename);
     }
 
     // Close existing fits file (if we have one)
@@ -167,9 +167,11 @@ int dada_dbfits_open(dada_client_t *client)
       sscanf(ctx->utc_start, "%d-%d-%d-%d:%d:%d", &year, &month, &day, &hour, &minute, &second);
 
       /* Make a new filename- oooooooooo_YYYYMMDDhhmmss_chCCC_FFF.fits */
-      snprintf(ctx->fits_filename, PATH_MAX, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%03d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+      snprintf(ctx->fits_filename, FITS_FILENAME_LEN, "%s/%ld_%04d%02d%02d%02d%02d%02d_ch%03d_%03d.fits", ctx->destination_dir, ctx->obs_id, year, month, day, hour, minute, second, ctx->coarse_channel, ctx->fits_file_number);
+      snprintf(ctx->temp_fits_filename, TEMP_FITS_FILENAME_LEN, "%s.tmp", ctx->fits_filename);
 
-      if (create_fits(client, &ctx->fits_ptr, ctx->fits_filename))
+      /* Create a temporary fits filename. Only once we are happy it's complete and good do we rename it back to .fits */
+      if (create_fits(client, &ctx->fits_ptr, ctx->temp_fits_filename))
       {
         multilog(log, LOG_ERR, "dada_dbfits_open(): Error creating new fits file.\n");
         return -1;
@@ -926,7 +928,8 @@ int process_new_observation(dada_client_t *client, long new_obs_id, long new_sub
   ctx->block_number = 0;
 
   // fits info
-  strncpy(ctx->fits_filename, "", PATH_MAX);
+  strncpy(ctx->fits_filename, "", FITS_FILENAME_LEN);
+  strncpy(ctx->temp_fits_filename, "", TEMP_FITS_FILENAME_LEN);
 
   // Set the obsid & sub obsid
   ctx->obs_id = new_obs_id;

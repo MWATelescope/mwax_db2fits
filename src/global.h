@@ -20,16 +20,18 @@
 #define STATUS_RUNNING 1
 #define STATUS_SHUTTING_DOWN 2
 
-#define DEFAULT_FILE_SIZE_LIMIT 5368709120l // Default file size limit- 5GB
-#define MWAX_VERSION_STRING_LEN 11          // Size of version strings for mwax_u2s, mwax_db2correlate2db and mwax_db2fits
-#define MWAX_MODE_LEN 33                    // Size of the MODE value in PSRDADA header. E.g. "HW_LFILES","VOLTAGE_START","NO_CAPTURE", "QUIT"
-#define UTC_START_LEN 21                    // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
-#define PROJ_ID_LEN 256                     // Size of the Project ID used by the MWA metadata database
-#define HOST_NAME_LEN 64                    // Length of hostname
-#define IP_AS_STRING_LEN 16                 // xxx.xxx.xxx.xxx
-#define XGPU_INPUT_STRIDE 16                // xGPU only allows inputs to be a multiple of 16
-#define COARSE_CHANNEL_MAX 255              // Highest possible coarse channel number
-#define INT_TIME_MSEC_MIN 200               // Minimum integration time (milliseconds)
+#define TEMP_FITS_FILENAME_LEN PATH_MAX                // Max length the temp fits filename (and path) can be. This is 4 chars more than the fits filename
+#define FITS_FILENAME_LEN (TEMP_FITS_FILENAME_LEN - 4) // Max length the fits filename (and path) can be
+#define DEFAULT_FILE_SIZE_LIMIT 5368709120l            // Default file size limit- 5GB
+#define MWAX_VERSION_STRING_LEN 11                     // Size of version strings for mwax_u2s, mwax_db2correlate2db and mwax_db2fits
+#define MWAX_MODE_LEN 33                               // Size of the MODE value in PSRDADA header. E.g. "HW_LFILES","VOLTAGE_START","NO_CAPTURE", "QUIT"
+#define UTC_START_LEN 21                               // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
+#define PROJ_ID_LEN 256                                // Size of the Project ID used by the MWA metadata database
+#define HOST_NAME_LEN 64                               // Length of hostname
+#define IP_AS_STRING_LEN 16                            // xxx.xxx.xxx.xxx
+#define XGPU_INPUT_STRIDE 16                           // xGPU only allows inputs to be a multiple of 16
+#define COARSE_CHANNEL_MAX 255                         // Highest possible coarse channel number
+#define INT_TIME_MSEC_MIN 200                          // Minimum integration time (milliseconds)
 
 typedef struct
 {
@@ -65,11 +67,11 @@ typedef struct dada_db_s
 
     // Stats
     char *stats_dir;
-    char stats_filename[PATH_MAX - 4]; // -4 because we don't include the dot and extension
+    char stats_filename[FITS_FILENAME_LEN];
 
     // Metafits
     char *metafits_dir;
-    char metafits_filename[PATH_MAX];
+    char metafits_filename[TEMP_FITS_FILENAME_LEN];
 
     // Version info
     char mwax_u2s_version[MWAX_VERSION_STRING_LEN];
@@ -78,7 +80,8 @@ typedef struct dada_db_s
     // FITS info
     char *destination_dir;
     fitsfile *fits_ptr;
-    char fits_filename[PATH_MAX];
+    char fits_filename[PATH_MAX - 4]; // we subtract 4 so we ensure temp_fits_filename can fit fits_filename + '.tmp'
+    char temp_fits_filename[PATH_MAX];
     int fits_file_number;
     long fits_file_size;
     long fits_file_size_limit;

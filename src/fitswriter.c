@@ -306,7 +306,7 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
 
 /**
  *
- *  @brief Closes the fits file.
+ *  @brief Closes the fits file, and renames it to remove the .tmp extension.
  *  @param[in] client A pointer to the dada_client_t object.
  *  @param[in,out] fptr Pointer to a pointer to the fitsfile structure.
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
@@ -340,6 +340,16 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
   else
   {
     multilog(log, LOG_WARNING, "close_fits(): Fits file is already closed.\n");
+  }
+
+  // At this point the temp fits file is closed. We should now rename it to .fits so it is picked up for archiving
+  if (rename(ctx->temp_fits_filename, ctx->fits_filename) == 0)
+  {
+    multilog(log, LOG_INFO, "close_fits(): rename of %s to %s successful.\n", ctx->temp_fits_filename, ctx->fits_filename);
+  }
+  else
+  {
+    multilog(log, LOG_ERR, "close_fits(): ERROR renaming %s to %s.\n", ctx->temp_fits_filename, ctx->fits_filename);
   }
 
   return (EXIT_SUCCESS);
