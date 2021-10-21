@@ -379,7 +379,22 @@ int dump_autocorrelation_stats(dada_client_t *client, void *ptr_data)
 
   // Generate filename
   // We begin with a tmp filename then rename once we have completed writing
-  snprintf(ctx->stats_filename, PATH_MAX - 4, "%s/%ld_autos.txt", ctx->stats_dir, ctx->subobs_id);
+  // The file number takes the subobs_id and returns an int between 0 and 7. So for example:
+  // 1300000000 = 0
+  // 1300000008 = 1
+  // 1300000016 = 2
+  // 1300000024 = 3
+  // 1300000032 = 4
+  // 1300000040 = 5
+  // 1300000048 = 6
+  // 1300000056 = 7
+  // 1300000064 = 0
+  // 1300000072 = 1
+  // 1300000080 = 2
+  // ...
+  int autos_file_number = ((ctx->subobs_id >> 3) & 0b111);
+
+  snprintf(ctx->stats_filename, PATH_MAX - 4, "%s/%s_autos_%d.dat", ctx->stats_dir, ctx->hostname, autos_file_number);
   snprintf(stats_filename_tmp, PATH_MAX, "%s.tmp", ctx->stats_filename);
 
   multilog(log, LOG_INFO, "dump_autocorrelation_stats(): Openning autocorrelation stats dump temp file for writing %s...\n", stats_filename_tmp);
