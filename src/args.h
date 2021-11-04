@@ -18,7 +18,6 @@ typedef struct
     char *health_netiface;
     char *health_ip;
     int health_port;
-    char *stats_path;
     long file_size_limit;
 } globalArgs_s;
 

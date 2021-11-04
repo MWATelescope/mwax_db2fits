@@ -29,7 +29,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
     globalArgs->health_netiface = NULL;
     globalArgs->health_ip = NULL;
     globalArgs->health_port = 0;
-    globalArgs->stats_path = NULL;
     globalArgs->file_size_limit = -1;
 
     static const char *optString = "k:m:d:n:i:p:l:v:?";
@@ -42,7 +41,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
             {"health-netiface", required_argument, NULL, 'n'},
             {"health-ip", required_argument, NULL, 'i'},
             {"health-port", required_argument, NULL, 'p'},
-            {"stats-path", required_argument, NULL, 's'},
             {"file-size-limit", optional_argument, NULL, 'l'},
             {"version", no_argument, NULL, 'v'},
             {"help", no_argument, NULL, '?'},
@@ -78,10 +76,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
 
         case 'p':
             globalArgs->health_port = atoi(optarg);
-            break;
-
-        case 's':
-            globalArgs->stats_path = optarg;
             break;
 
         case 'l':
@@ -143,13 +137,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
     if (!globalArgs->health_port)
     {
         fprintf(stderr, "Error: health port (-p | --health-port) is mandatory.\n");
-        print_usage();
-        exit(1);
-    }
-
-    if (!globalArgs->stats_path)
-    {
-        fprintf(stderr, "Error: stats path (-s | --stats-path) is mandatory.\n");
         print_usage();
         exit(1);
     }

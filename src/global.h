@@ -65,10 +65,6 @@ typedef struct dada_db_s
     // Common
     char hostname[HOST_NAME_LEN];
 
-    // Stats
-    char *stats_dir;
-    char stats_filename[FITS_FILENAME_LEN];
-
     // Metafits
     char *metafits_dir;
     char metafits_filename[TEMP_FITS_FILENAME_LEN];

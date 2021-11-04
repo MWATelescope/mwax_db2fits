@@ -327,19 +327,6 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
       }
 
       ctx->block_number += 1;
-
-      // Check to see if we are the last expected block
-      if (ctx->block_number % ctx->no_of_integrations_per_subobs == 0)
-      {
-        // Write out stats
-        if (dump_autocorrelation_stats(client, ptr_data) != EXIT_SUCCESS)
-        {
-          // Error!
-          multilog(log, LOG_ERR, "dada_dbfits_io(): Error Writing autocorrelation stats dump.\n");
-          return -1;
-        }
-      }
-
       ctx->bytes_written += written;
     }
 
@@ -350,112 +337,6 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
     multilog(log, LOG_WARNING, "dada_dbfits_io(): Unknown mode %s; (ignoring).\n", ctx->mode);
     return 0;
   }
-}
-
-/**
- * 
- *  @brief This will dump out this integrations autocorrelations to a file
- *  @param[in] client A pointer to the dada_client_t object.
- *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
- *  @param[in] bytes The number of bytes that the visibilities take up
- *  @returns SUCCESS or EXIT_FAILURE
- */
-int dump_autocorrelation_stats(dada_client_t *client, void *ptr_data)
-{
-  assert(client != 0);
-  dada_db_s *ctx = (dada_db_s *)client->context;
-  multilog_t *log = (multilog_t *)ctx->log;
-
-  int baseline = 0;
-  int baseline_offset = 0;
-  int chan_offset = 0;
-  int xx_r_offset = 0;
-  int yy_r_offset = 6;
-  int ntiles = ctx->ninputs_xgpu / 2;
-
-  char stats_filename_tmp[PATH_MAX];
-
-  float *data = (float *)ptr_data;
-
-  // Generate filename
-  // We begin with a tmp filename then rename once we have completed writing
-  // The file number takes the subobs_id and returns an int between 0 and 7. So for example:
-  // 1300000000 = 0
-  // 1300000008 = 1
-  // 1300000016 = 2
-  // 1300000024 = 3
-  // 1300000032 = 4
-  // 1300000040 = 5
-  // 1300000048 = 6
-  // 1300000056 = 7
-  // 1300000064 = 0
-  // 1300000072 = 1
-  // 1300000080 = 2
-  // ...
-  int autos_file_number = ((ctx->subobs_id >> 3) & 0b111);
-
-  snprintf(ctx->stats_filename, PATH_MAX - 4, "%s/%s_autos_%d.dat", ctx->stats_dir, ctx->hostname, autos_file_number);
-  snprintf(stats_filename_tmp, PATH_MAX, "%s.tmp", ctx->stats_filename);
-
-  multilog(log, LOG_INFO, "dump_autocorrelation_stats(): Openning autocorrelation stats dump temp file for writing %s...\n", stats_filename_tmp);
-
-  FILE *fp = fopen(stats_filename_tmp, "wb"); // Change to "w" for ascii output- useful for debugging
-
-  if (fp == NULL)
-  {
-    multilog(log, LOG_ERR, "dump_autocorrelation_stats(): Error openning autocorrelation stats dump for writing %s: %s\n", ctx->stats_filename, strerror(errno));
-    return EXIT_FAILURE;
-  }
-
-  for (int i = 0; i < ntiles; i++)
-  {
-    for (int j = i; j < ntiles; j++)
-    {
-      // Autocorrelations only
-      if (i == j)
-      {
-        // Uncomment this for debug: fprintf(fp, "Baseline: %d x %d (%d): ", i, j, baseline);
-
-        // Determine where the channel starts
-        baseline_offset = baseline * ctx->nfine_chan * (ctx->npol * ctx->npol) * 2;
-
-        // Iterate all the fine channels for this baseline
-        for (int ch = 0; ch < ctx->nfine_chan; ch++)
-        {
-          chan_offset = (ch * (ctx->npol * ctx->npol) * 2);
-
-          // Only dump xx_r and yy_r
-          fwrite(&data[baseline_offset + chan_offset + xx_r_offset], sizeof(float), 1, fp);
-          fwrite(&data[baseline_offset + chan_offset + yy_r_offset], sizeof(float), 1, fp);
-
-          //Uncomment for debug
-          //fprintf(fp, "(ch%d)xxr=%.5f,yy_r=%.5f", ch, data[baseline_offset+chan_offset+xx_r_offset], data[baseline_offset+chan_offset+yy_r_offset]);
-        }
-      }
-
-      baseline = baseline + 1;
-    }
-  }
-
-  // Close file
-  if (fp != NULL)
-    fclose(fp);
-
-  multilog(log, LOG_INFO, "dump_autocorrelation_stats(): Finished writing. Renaming temp file %s to %s.\n", stats_filename_tmp, ctx->stats_filename);
-
-  int rename_retval = rename(stats_filename_tmp, ctx->stats_filename);
-
-  if (rename_retval == 0)
-  {
-    multilog(log, LOG_INFO, "dump_autocorrelation_stats(): completed\n", ctx->stats_filename);
-  }
-  else
-  {
-    perror("Error: ");
-    multilog(log, LOG_PERROR, "dump_autocorrelation_stats(): Could not rename file %s to %s (Error code %d).\n", stats_filename_tmp, ctx->stats_filename, rename_retval);
-  }
-
-  return EXIT_SUCCESS;
 }
 
 /**
