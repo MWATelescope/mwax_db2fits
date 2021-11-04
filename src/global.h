@@ -22,7 +22,7 @@
 
 #define TEMP_FITS_FILENAME_LEN PATH_MAX                // Max length the temp fits filename (and path) can be. This is 4 chars more than the fits filename
 #define FITS_FILENAME_LEN (TEMP_FITS_FILENAME_LEN - 4) // Max length the fits filename (and path) can be
-#define DEFAULT_FILE_SIZE_LIMIT 5368709120l            // Default file size limit- 5GB
+#define DEFAULT_FILE_SIZE_LIMIT 10737418240l           // Default file size limit- 10GB
 #define MWAX_VERSION_STRING_LEN 11                     // Size of version strings for mwax_u2s, mwax_db2correlate2db and mwax_db2fits
 #define MWAX_MODE_LEN 33                               // Size of the MODE value in PSRDADA header. E.g. "HW_LFILES","VOLTAGE_START","NO_CAPTURE", "QUIT"
 #define UTC_START_LEN 21                               // Size of UTC_START in the PSRDADA header (e.g. 2018-08-08-08:00:00)
