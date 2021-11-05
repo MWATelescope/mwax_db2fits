@@ -157,13 +157,14 @@ int main(int argc, char *argv[])
 
   strncpy(g_health.hostname, g_ctx.hostname, HOST_NAME_LEN);
 
-  multilog(g_ctx.log, LOG_INFO, "main():Launching health thread...\n");
+  multilog(g_ctx.log, LOG_INFO, "main(): Launching health thread...\n");
 
   // Launch Health thread
   pthread_t health_thread;
   pthread_create(&health_thread, NULL, health_thread_fn, (void *)&g_health);
 
   // main loop
+  multilog(g_ctx.log, LOG_INFO, "main(): mwax_db2fits is statred and ready to read from ringbuffer.\n");
   while (!quit)
   {
     multilog(g_ctx.log, LOG_INFO, "main: dada_client_read()\n");
