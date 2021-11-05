@@ -24,7 +24,6 @@
 int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
 {
     globalArgs->input_db_key = 0;
-    globalArgs->metafits_path = NULL;
     globalArgs->destination_path = NULL;
     globalArgs->health_netiface = NULL;
     globalArgs->health_ip = NULL;
@@ -36,7 +35,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
     static const struct option longOpts[] =
         {
             {"key", required_argument, NULL, 'k'},
-            {"metafits-path", required_argument, NULL, 'm'},
             {"destination-path", required_argument, NULL, 'd'},
             {"health-netiface", required_argument, NULL, 'n'},
             {"health-ip", required_argument, NULL, 'i'},
@@ -64,10 +62,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
 
         case 'n':
             globalArgs->health_netiface = optarg;
-            break;
-
-        case 'm':
-            globalArgs->metafits_path = optarg;
             break;
 
         case 'i':
@@ -102,13 +96,6 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
     if (!globalArgs->input_db_key)
     {
         fprintf(stderr, "Error: input shared memory key (-k | --key) is mandatory.\n");
-        print_usage();
-        exit(1);
-    }
-
-    if (!globalArgs->metafits_path)
-    {
-        fprintf(stderr, "Error: metafits path (-m | --metafits-path) is mandatory.\n");
         print_usage();
         exit(1);
     }

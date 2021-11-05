@@ -83,7 +83,6 @@ int main(int argc, char *argv[])
   // print all of the options (this is debug)
   multilog(g_ctx.log, LOG_INFO, "Command line options used:\n");
   multilog(g_ctx.log, LOG_INFO, "* Shared Memory key:     %x\n", globalArgs.input_db_key);
-  multilog(g_ctx.log, LOG_INFO, "* Metafits path:         %s\n", globalArgs.metafits_path);
   multilog(g_ctx.log, LOG_INFO, "* Destination path:      %s\n", globalArgs.destination_path);
   multilog(g_ctx.log, LOG_INFO, "* Health send interface: %s\n", globalArgs.health_netiface);
   multilog(g_ctx.log, LOG_INFO, "* Health UDP IP:         %s\n", globalArgs.health_ip);
@@ -124,7 +123,6 @@ int main(int argc, char *argv[])
 
   // Pass stuff to the context
   g_ctx.destination_dir = globalArgs.destination_path;
-  g_ctx.metafits_dir = globalArgs.metafits_path;
   g_ctx.fits_file_size_limit = globalArgs.file_size_limit;
 
   // set up DADA read client

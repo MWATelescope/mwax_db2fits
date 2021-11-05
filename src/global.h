@@ -65,10 +65,6 @@ typedef struct dada_db_s
     // Common
     char hostname[HOST_NAME_LEN];
 
-    // Metafits
-    char *metafits_dir;
-    char metafits_filename[TEMP_FITS_FILENAME_LEN];
-
     // Version info
     char mwax_u2s_version[MWAX_VERSION_STRING_LEN];
     char mwax_db2correlate2db_version[MWAX_VERSION_STRING_LEN];
