@@ -150,16 +150,14 @@ void print_usage()
     print_version();
     printf("\nUsage: mwax_db2fits [OPTION]...\n\n");
     printf("This code will open the dada ringbuffer containing raw \n");
-    printf("visibility data from the MWA Crosse Correlator.\n");
+    printf("visibility data from the MWAX Correlator.\n");
     printf("It will then write out a fits file to be picked up by the \n");
     printf("archiver process.\n\n");
     printf("  -k --key=KEY                      Hexadecimal shared memory key\n");
     printf("  -d --destination-path=PATH        Destination path for gpubox files\n");
-    printf("  -m --metafits-path=PATH           Metafits directory path\n");
     printf("  -n --health-netiface=INTERFACE    Health UDP network interface to send with\n");
     printf("  -i --health-ip=IP                 Health UDP Multicast destination ip address\n");
     printf("  -p --health-port=PORT             Health UDP Multicast destination port\n");
-    printf("  -s --stats-path=PATH              Statistics directory path\n");
     printf("  -l --file-size-limit=BYTES        FITS file size limit before splitting into a new file. Default=%ld bytes. 0=no splitting\n", DEFAULT_FILE_SIZE_LIMIT);
     printf("  -v --version                      Display version number\n");
     printf("  -? --help                         This help text\n");
