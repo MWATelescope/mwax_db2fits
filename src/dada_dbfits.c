@@ -230,7 +230,7 @@ int dada_dbfits_open(dada_client_t *client)
     }
     else
     {
-      multilog(log, LOG_INFO, "dada_dbfits_open(): %s incremented from %d sec to %d sec.\n", HEADER_OBS_OFFSET, ctx->exposure_sec, new_duration_sec);
+      multilog(log, LOG_INFO, "dada_dbfits_open(): %s incremented from %d sec to %d sec.\n", HEADER_OBS_OFFSET, ctx->obs_offset, new_obs_offset_sec);
     }
 
     /* update new values */
