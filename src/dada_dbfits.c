@@ -109,7 +109,7 @@ int dada_dbfits_open(dada_client_t *client)
   // Check this obs_id against our 'in progress' obsid
   if (ctx->obs_id != this_obs_id || ctx->fits_file_size >= ctx->fits_file_size_limit)
   {
-    // We need a new fits file
+    // We need a new fits file, since the obs_id is different or the file size limit was reached
     if (ctx->obs_id != this_obs_id)
     {
       // Set this flag so we know whats going on later in this function
@@ -403,19 +403,9 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
         return -1;
       }
 
-      //
-      // TODO: Check with the metabin for info about this observation. Has the duration changed?
-      //
-      int new_duration = ctx->exposure_sec; //TODO: Fix me! This is a placeholder
-
-      if (ctx->exposure_sec != new_duration)
-      {
-        multilog(log, LOG_INFO, "dada_dbfits_close(): Observation has been cut short. Old duration was %d, new duration is %d.\n", ctx->exposure_sec, new_duration);
-        ctx->exposure_sec = new_duration; // TODO: put new duration from metabin here
-      }
-
       // Did we hit the end of an obs
-      if (current_duration == ctx->exposure_sec)
+      // We have a greater than or equals here since the timing with the duration changing may happen during a subobs that is past the duration anyway.
+      if (current_duration >= ctx->exposure_sec)
       {
         do_close_fits = 1;
       }
