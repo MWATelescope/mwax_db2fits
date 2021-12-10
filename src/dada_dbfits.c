@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include "dada_dbfits.h"
-#include "../mwax_common/mwax_global_defs.h" // From mwax-common
+#include "mwax_global_defs.h" // From mwax-common
 #include "global.h"
 #include "utils.h"
 

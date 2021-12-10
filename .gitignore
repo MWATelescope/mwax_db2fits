@@ -2,7 +2,6 @@ bin/
 doc/
 CMakeCache.txt
 CMakeFiles
-*.cmake
 Makefile
 .vscode
 *.fits
