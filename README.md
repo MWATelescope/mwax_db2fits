@@ -19,6 +19,23 @@ $ cmake CMakeLists.txt
 $ make
 ```
 
+### Building on Garrawarla
+```
+$ module load gcc/8.3.0
+$ module load cuda
+$ module use /pawsey/mwa/software/python3/modulefiles
+$ module load cfitsio_reentrant
+$ module load xGPU/mwax_128T
+$ module load psrdada/mwax
+$ mkdir -p build && cd build
+$ cmake -DPSRDADA_ROOT_DIR=${PSRDADA_ROOT} \
+        -DMWAX_COMMON_ROOT=../mwax_common-git \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
+        ..
+$ make
+$ make install
+```
+
 ## Running / Command line Arguments
 Example from `mwax_db2fits --help`
 ```
