@@ -250,7 +250,7 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
   }
 
   // NINPUTS
-  int ninputs = ctx->ninputs_xgpu;
+  int ninputs = ctx->ninputs;
 
   if (fits_write_key(*fptr, TINT, MWA_FITS_KEY_NINPUTS, &(ninputs), "Number of rf inputs into the correlation products", &status))
   {
@@ -409,7 +409,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   //
   // NAXIS1 is rows, NAXIS2 is cols. We want NAXIS1 < NAXIS2 for efficiency
   // NAXIS1 = FINE_CHAN * NPOL * NPOL * 2 (real/imag)
-  // NAXIS2 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
+  // NAXIS2 = NINPUTS * (NINPUTS+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
   //
   //
   // [time][baseline][freq][pol]
@@ -545,7 +545,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
 {
   // NAXIS1 is rows, NAXIS2 is cols. We want NAXIS1 < NAXIS2 for efficiency
   // NAXIS1 = NPOL * NPOL
-  // NAXIS2 = NINPUTS_XGPU * (NINPUTS_XGPU+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
+  // NAXIS2 = NINPUTS * (NINPUTS+2) / 8 == (TILES * TILES + 1)/ 2 == BASELINES
   //
   //           Weights
   // Baseline  xx      xy      yx      yy
