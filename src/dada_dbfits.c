@@ -452,10 +452,10 @@ int validate_header(dada_client_t *client)
 
   multilog_t *log = (multilog_t *)client->log;
 
-  /* Do have a positive number of inputs (tile * pol) and are they a multiple of 16? */
-  if (!(ctx->ninputs_xgpu > 0 && (ctx->ninputs_xgpu % XGPU_INPUT_STRIDE == 0)))
+  /* Do have a positive number of inputs (tile * pol) */
+  if (!(ctx->ninputs > 0))
   {
-    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0 or a multiple of %d (as required by xGPU).\n", HEADER_NINPUTS_XGPU, XGPU_INPUT_STRIDE);
+    multilog(log, LOG_ERR, "validate_heder(): %s is not greater than 0.\n", HEADER_NINPUTS);
     return -1;
   }
 
@@ -581,7 +581,7 @@ int read_dada_header(dada_client_t *client)
   ctx->obs_offset = 0;
   ctx->nbit = 0;
   ctx->npol = 0;
-  ctx->ninputs_xgpu = 0;
+  ctx->ninputs = 0;
   ctx->int_time_msec = 0;
   ctx->transfer_size = 0;
   strncpy(ctx->proj_id, "", PROJ_ID_LEN);
@@ -635,9 +635,9 @@ int read_dada_header(dada_client_t *client)
     return -1;
   }
 
-  if (ascii_header_get(client->header, HEADER_NINPUTS_XGPU, "%i", &ctx->ninputs_xgpu) == -1)
+  if (ascii_header_get(client->header, HEADER_NINPUTS, "%i", &ctx->ninputs) == -1)
   {
-    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_NINPUTS_XGPU);
+    multilog(log, LOG_ERR, "read_dada_header(): %s not found in header.\n", HEADER_NINPUTS);
     return -1;
   }
 
@@ -755,7 +755,7 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "Coarse channel width:     %d kHz\n", ctx->bandwidth_hz / 1000);
   multilog(log, LOG_INFO, "Bits per real/imag:       %d\n", ctx->nbit);
   multilog(log, LOG_INFO, "Polarisations:            %d\n", ctx->npol);
-  multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs_xgpu / 2);
+  multilog(log, LOG_INFO, "Tiles:                    %d\n", ctx->ninputs / 2);
   multilog(log, LOG_INFO, "Project Id:               %s\n", ctx->proj_id);
   multilog(log, LOG_INFO, "Duration:                 %d sec\n", ctx->exposure_sec);
   multilog(log, LOG_INFO, "Coarse channel no.:       %d\n", ctx->coarse_channel);
@@ -838,7 +838,7 @@ int process_new_observation(dada_client_t *client, long new_obs_id, long new_sub
   }
 
   // Calculate baselines
-  ctx->nbaselines = (ctx->ninputs_xgpu * (ctx->ninputs_xgpu + 2)) / 8;
+  ctx->nbaselines = (ctx->ninputs * (ctx->ninputs + 2)) / 8;
 
   //
   // Check transfer size read in from header matches what we expect from the other params

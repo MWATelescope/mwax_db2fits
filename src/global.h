@@ -29,7 +29,6 @@
 #define PROJ_ID_LEN 256                                // Size of the Project ID used by the MWA metadata database
 #define HOST_NAME_LEN 64                               // Length of hostname
 #define IP_AS_STRING_LEN 16                            // xxx.xxx.xxx.xxx
-#define XGPU_INPUT_STRIDE 16                           // xGPU only allows inputs to be a multiple of 16
 #define COARSE_CHANNEL_MAX 255                         // Highest possible coarse channel number
 #define INT_TIME_MSEC_MIN 200                          // Minimum integration time (milliseconds)
 
@@ -87,7 +86,7 @@ typedef struct dada_db_s
     int obs_offset;
     int nbit;
     int npol;
-    int ninputs_xgpu;
+    int ninputs;
     int int_time_msec;
     uint64_t transfer_size;
     char proj_id[PROJ_ID_LEN];
