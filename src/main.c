@@ -23,10 +23,10 @@
 #include "version.h"
 
 /**
- * 
+ *
  *  @brief This captures the relevant signal and set the g_quit variable so the program quits gracefully.
  *  @param[in] signum Signal number to handle.
-  */
+ */
 void sig_handler(int signum)
 {
   if (g_ctx.log != NULL)
@@ -39,11 +39,11 @@ void sig_handler(int signum)
 }
 
 /**
- * 
+ *
  *  @brief This is main, duh!
  *  @param[in] argc Count of arguments passed in from command line.
  *  @param[in] argv Array of arguments passed in from command line.
- *  @returns EXIT_SUCCESS on success, or any other value if there was an error. 
+ *  @returns EXIT_SUCCESS on success, or any other value if there was an error.
  */
 int main(int argc, char *argv[])
 {

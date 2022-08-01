@@ -14,7 +14,7 @@
 #include "version.h"
 
 /**
- * 
+ *
  *  @brief This function parses command line arguments. Returns success if all good.
  *  @param[in] argc Count of arguments passed from main()
  *  @param[in] argv[] Array of arguments passed from main()
@@ -142,7 +142,7 @@ int process_args(int argc, char *argv[], globalArgs_s *globalArgs)
 }
 
 /**
- * 
+ *
  *  @brief This is called to provide the user with the summary of usage/help
  */
 void print_usage()
@@ -164,7 +164,7 @@ void print_usage()
 }
 
 /**
- * 
+ *
  *  @brief This is called to provide the user with the version info
  */
 void print_version()

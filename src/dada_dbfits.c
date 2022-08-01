@@ -13,11 +13,11 @@
 #include "utils.h"
 
 /**
- * 
+ *
  *  @brief This is called at the begininning of each new 8 second sub-observation.
  *         We need check if we are in a new fits file or continuing the existing one.
  *  @param[in] client A pointer to the dada_client_t object.
- *  @returns EXIT_SUCCESS on success, or -1 if there was an error. 
+ *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int dada_dbfits_open(dada_client_t *client)
 {
@@ -244,13 +244,13 @@ int dada_dbfits_open(dada_client_t *client)
 }
 
 /**
- * 
+ *
  *  @brief This is the function psrdada calls when we have new data to read.
  *         NOTE: this method reads an entire block of PSRDADA ringbuffer. The ringbuffer is sized to be the MAX
  *         possible, as it cannot be resized at runtime. Therefore most times, the correlator mode will be producing
  *         less data than this buffer can contain, so we'll need to only get the first x bytes from the buffer.
  *         (Where x is the bytes needded for that correlator mode + 1 extra finechannel for weights)
- * 
+ *
  *  @param[in] client A pointer to the dada_client_t object.
  *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
  *  @param[in] bytes The number of bytes that are available to be read from the ringbuffer.
@@ -311,7 +311,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
           written += wrote;
           ctx->fits_file_size = ctx->fits_file_size + visibility_hdu_bytes + weights_hdu_bytes;
 
-          //multilog(log, LOG_INFO, "dada_dbfits_io(): Current fits file size: %ld / %ld\n", ctx->fits_file_size, ctx->fits_file_size_limit);
+          // multilog(log, LOG_INFO, "dada_dbfits_io(): Current fits file size: %ld / %ld\n", ctx->fits_file_size, ctx->fits_file_size_limit);
 
           ctx->obs_marker_number += 1; // Increment the marker number
 
@@ -340,7 +340,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
 }
 
 /**
- * 
+ *
  *  @brief This is called when we are reading a sub block of an 8 second sub-observation.
  *  @param[in] client A pointer to the dada_client_t object.
  *  @param[in] buffer The pointer to the data in the ringbuffer we are about to read.
@@ -368,7 +368,7 @@ int64_t dada_dbfits_io_block(dada_client_t *client, void *buffer, uint64_t bytes
 }
 
 /**
- * 
+ *
  *  @brief This is called at the end of each new 8 second sub-observation.
  *         We need check if the current observation duration has changed (shortened) from what we expected.
  *  @param[in] client A pointer to the dada_client_t object.
@@ -440,9 +440,9 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
 }
 
 /**
- * 
+ *
  *  @brief This validates the PSRDADA attributes in the context structure which have been read from the header
- *  @param[in] client A pointer to the dada_client_t object. 
+ *  @param[in] client A pointer to the dada_client_t object.
  *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int validate_header(dada_client_t *client)
@@ -562,9 +562,9 @@ int validate_header(dada_client_t *client)
 }
 
 /**
- * 
+ *
  *  @brief This reads a PSRDADA header and populates our context structure and dumps the contents into a debug log
- *  @param[in] client A pointer to the dada_client_t object. 
+ *  @param[in] client A pointer to the dada_client_t object.
  *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int read_dada_header(dada_client_t *client)
@@ -780,11 +780,11 @@ int read_dada_header(dada_client_t *client)
 }
 
 /**
- * 
+ *
  *  @brief This code peforms steps necessary to setup for a new observation
- *  @param[in] client A pointer to the dada_client_t object. 
- *  @param[in] new_obs_id The new obsid as read from the PSDADA header. 
- *  @param[in] new_subobs_id The new subobsid as read from the PSRDADA header. 
+ *  @param[in] client A pointer to the dada_client_t object.
+ *  @param[in] new_obs_id The new obsid as read from the PSDADA header.
+ *  @param[in] new_subobs_id The new subobsid as read from the PSRDADA header.
  *  @returns EXIT_SUCCESS on success, or -1 if there was an error.
  */
 int process_new_observation(dada_client_t *client, long new_obs_id, long new_subobs_id)

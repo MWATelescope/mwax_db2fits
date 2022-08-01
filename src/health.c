@@ -16,10 +16,10 @@
 #include "version.h"
 
 /**
- * 
+ *
  *  @brief This is the main health thread function to send health out_udp_data for this process via UDP.
  *  @param[in] args Pointer to the arguments that main() passes to this function.
- *  @returns void. 
+ *  @returns void.
  */
 void *health_thread_fn(void *args)
 {
@@ -139,7 +139,7 @@ void *health_thread_fn(void *args)
             exit(EXIT_FAILURE);
         }
 
-        //send the message
+        // send the message
         if (sendto(sock, &out_udp_data, sizeof(health_udp_data_s), 0,
                    (struct sockaddr *)&groupSock,
                    sizeof(groupSock)) < 0)

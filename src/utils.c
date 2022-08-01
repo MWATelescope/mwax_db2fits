@@ -22,10 +22,10 @@
 #include "global.h"
 
 /**
- * 
+ *
  *  @brief This populates the out_timeinfo structure with the current local time.
  *  @param[out] out_timeinfo Pointer to the pointer where we will create the struct tm object.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int get_time_struct(struct tm **out_timeinfo)
 {
@@ -44,10 +44,10 @@ int get_time_struct(struct tm **out_timeinfo)
 }
 
 /**
- * 
+ *
  *  @brief This populates the timestring with the current time.
  *  @param[out] timestring Pointer to the string to be populated.
- *  @returns EXIT_SUCCESS on success,. 
+ *  @returns EXIT_SUCCESS on success,.
  */
 int get_time_string_for_fits(char *timestring)
 {
@@ -60,10 +60,10 @@ int get_time_string_for_fits(char *timestring)
 }
 
 /**
- * 
+ *
  *  @brief This populates the timestring with the current time, but formatted for use in a log.
  *  @param[out] timestring Pointer to the string to be populated.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int get_time_string_for_log(char *timestring)
 {
@@ -76,11 +76,11 @@ int get_time_string_for_log(char *timestring)
 }
 
 /**
- * 
+ *
  *  @brief This attempts to get the IPv4 address of a named network interface.
  *  @param[in] interface A char* containing the interface name- e.g. eth0.
  *  @param[out] out_ip_address an allocated char* buffer containing the IP v4 address- this should be min of 15 + 1 characters
- *  @returns EXIT_SUCCESS on success or any other value on failure. 
+ *  @returns EXIT_SUCCESS on success or any other value on failure.
  */
 int get_ip_address_for_interface(const char *interface, char *out_ip_address)
 {

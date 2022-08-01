@@ -451,7 +451,7 @@ int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_
   multilog_t *log = (multilog_t *)ctx->log;
 
   int status = 0;
-  int bitpix = FLOAT_IMG; //complex(r,i)  = 2x4 bytes
+  int bitpix = FLOAT_IMG; // complex(r,i)  = 2x4 bytes
   long naxis = 2;
   uint64_t axis1_rows = fine_channels * polarisations * polarisations * 2; //  we x2 as we store real and imaginary;
   uint64_t axis2_cols = baselines;
@@ -561,7 +561,7 @@ int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t uni
   multilog_t *log = (multilog_t *)ctx->log;
 
   int status = 0;
-  int bitpix = FLOAT_IMG; //complex(r,i)  = 2x4 bytes
+  int bitpix = FLOAT_IMG; // complex(r,i)  = 2x4 bytes
   long naxis = 2;
   uint64_t axis1_rows = polarisations * polarisations;
   uint64_t axis2_cols = baselines;

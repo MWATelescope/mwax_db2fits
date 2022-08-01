@@ -2,7 +2,7 @@
  * @file global.c
  * @author Greg Sleap
  * @date 5 Jul 2018
- * @brief This is the code for anything global 
+ * @brief This is the code for anything global
  *
  */
 #include <stdio.h>
@@ -19,9 +19,9 @@ health_thread_data_s g_health;
 dada_db_s g_ctx;
 
 /**
- * 
+ *
  *  @brief This creates the mutex used to ensure access to g_quit is thread-safe.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int initialise_quit()
 {
@@ -30,10 +30,10 @@ int initialise_quit()
 }
 
 /**
- * 
+ *
  *  @brief A thread-safe way to set the value of g_quit.
- *  @param[in] Value to set g_quit to. 
- *  @returns EXIT_SUCCESS on success. 
+ *  @param[in] Value to set g_quit to.
+ *  @returns EXIT_SUCCESS on success.
  */
 int set_quit(int value)
 {
@@ -44,9 +44,9 @@ int set_quit(int value)
 }
 
 /**
- * 
+ *
  *  @brief A thread-safe way to return the value of g_quit.
- *  @returns Value of g_quit. 
+ *  @returns Value of g_quit.
  */
 int get_quit()
 {
@@ -59,9 +59,9 @@ int get_quit()
 }
 
 /**
- * 
+ *
  *  @brief Destroys the g_quit_mutex.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int destroy_quit()
 {
@@ -70,9 +70,9 @@ int destroy_quit()
 }
 
 /**
- * 
+ *
  *  @brief This creates the mutex used to ensure access to g_health is thread-safe.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int initialise_health()
 {
@@ -81,12 +81,12 @@ int initialise_health()
 }
 
 /**
- * 
+ *
  *  @brief A thread-safe way to set the values of g_health.
- *  @param[in] status. 
- *  @param[in] obs_id. 
- *  @param[in] subobs_id. 
- *  @returns EXIT_SUCCESS on success. 
+ *  @param[in] status.
+ *  @param[in] obs_id.
+ *  @param[in] subobs_id.
+ *  @returns EXIT_SUCCESS on success.
  */
 int set_health(int status, long obs_id, long subobs_id)
 {
@@ -99,12 +99,12 @@ int set_health(int status, long obs_id, long subobs_id)
 }
 
 /**
- * 
+ *
  *  @brief A thread-safe way to return the values of g_health.
- *  @param[in out] status 
- *  @param[in out] obs_id 
+ *  @param[in out] status
+ *  @param[in out] obs_id
  *  @param[in out] subobs_id
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int get_health(int *status, long *obs_id, long *subobs_id)
 {
@@ -118,9 +118,9 @@ int get_health(int *status, long *obs_id, long *subobs_id)
 }
 
 /**
- * 
+ *
  *  @brief Destroys the g_health_mutex.
- *  @returns EXIT_SUCCESS on success. 
+ *  @returns EXIT_SUCCESS on success.
  */
 int destroy_health()
 {
