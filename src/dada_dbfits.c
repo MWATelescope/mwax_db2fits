@@ -65,8 +65,7 @@ int dada_dbfits_open(dada_client_t *client)
     else if (is_mwax_mode_quit(ctx->mode) == 1)
     {
       // We'll flag we want to quit
-      set_quit(1);
-      return EXIT_SUCCESS;
+      return -1;
     }
     else
     {
