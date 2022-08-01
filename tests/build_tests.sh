@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-echo Building test01...
-gcc test01/make_test01_data.c common.c -o test01/make_test01_data

@@ -16,7 +16,7 @@ mwax_db2fits/tests/test01$ ./run_test01.sh
 * Two generated data files for the 2 subobservations
 * 4 timesteps (2 per subobs)
 * 2 tiles (3 baselines)
-* 1 coarse channel
+* 1 coarse channel (148, correlator channel 8)
 * 2 fine channels per coarse
 * Correlator mode: 640kHz, 4 sec
 
