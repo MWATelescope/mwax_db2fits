@@ -11,8 +11,8 @@ rm -v mwax_db2fits.log
 echo "Clearing ring buffers"
 dada_db -k 2345 -d
 
-echo "Creating ring buffers (8 buffers of 192 bytes)"
-dada_db -k 2345 -n 5 -b 240
+echo "Creating ring buffers (4 buffers of 240 bytes)"
+dada_db -k 2345 -n 4 -b 240
 
 echo "Create subobservation 1"
 ./make_test01_data test01_header_1.txt test01_data1.dat

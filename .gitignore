@@ -14,3 +14,10 @@ scripts/env
 *.dada
 *.png
 *.code-workspace
+.python-version
+tests/__pycache__/
+tests/test01/make_test01_data
+*.log
+*.dat
+*.tmp
+tests/test02/make_test02_data

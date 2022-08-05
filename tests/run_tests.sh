@@ -18,5 +18,14 @@ cd test01
 ./run_test01.sh
 cd ..
 
+echo Building test02...
+gcc test02/make_test02_data.c common.c -o test02/make_test02_data
+
+echo Executing test02...
+cd test02
+./run_test02.sh
+cd ..
+
 echo Analysing Test Results
-pytest -v test01.py
+pytest test01.py
+pytest test02.py

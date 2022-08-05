@@ -1,3 +1,6 @@
+#
+# Test01: Analyse output files and/or logs from this test of mwax_db2fits
+#
 from astropy.io import fits
 import numpy as np
 import os
