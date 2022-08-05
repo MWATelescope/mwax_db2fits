@@ -309,9 +309,10 @@ int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename)
  *  @brief Closes the fits file, and renames it to remove the .tmp extension.
  *  @param[in] client A pointer to the dada_client_t object.
  *  @param[in,out] fptr Pointer to a pointer to the fitsfile structure.
+ *  @param[in] fits_is_good integer indicating if we have a complete, good fits file. 0 == Not good- do not rename- instead delete, 1 == Good, complete FITS file. Close and do rename.
  *  @returns EXIT_SUCCESS on success, or EXIT_FAILURE if there was an error.
  */
-int close_fits(dada_client_t *client, fitsfile **fptr)
+int close_fits(dada_client_t *client, fitsfile **fptr, int fits_is_good)
 {
   assert(client != 0);
   dada_db_s *ctx = (dada_db_s *)client->context;
@@ -325,16 +326,35 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
 
   if (*fptr != NULL)
   {
-    if (fits_close_file(*fptr, &status))
+    if (fits_is_good == 1)
     {
-      char error_text[30] = "";
-      fits_get_errstatus(status, error_text);
-      multilog(log, LOG_ERR, "close_fits(): Error closing fits file. Error: %d -- %s\n", status, error_text);
-      return EXIT_FAILURE;
+      // FITS file is good and complete (according to the caller), so close it and rename it
+      if (fits_close_file(*fptr, &status))
+      {
+        char error_text[30] = "";
+        fits_get_errstatus(status, error_text);
+        multilog(log, LOG_ERR, "close_fits(): Error closing fits file. Error: %d -- %s\n", status, error_text);
+        return EXIT_FAILURE;
+      }
+      else
+      {
+        *fptr = NULL;
+      }
     }
     else
     {
-      *fptr = NULL;
+      // FITS file is no good, we should delete it
+      if (fits_delete_file(*fptr, &status))
+      {
+        char error_text[30] = "";
+        fits_get_errstatus(status, error_text);
+        multilog(log, LOG_ERR, "close_fits(): Error deleting fits file. Error: %d -- %s\n", status, error_text);
+        return EXIT_FAILURE;
+      }
+      else
+      {
+        *fptr = NULL;
+      }
     }
   }
   else
@@ -342,14 +362,18 @@ int close_fits(dada_client_t *client, fitsfile **fptr)
     multilog(log, LOG_WARNING, "close_fits(): Fits file is already closed.\n");
   }
 
-  // At this point the temp fits file is closed. We should now rename it to .fits so it is picked up for archiving
-  if (rename(ctx->temp_fits_filename, ctx->fits_filename) == 0)
+  // At this point the temp fits file is closed or deleted. If caller says it's good,
+  // We should now rename it to .fits so it is picked up for archiving
+  if (fits_is_good == 1)
   {
-    multilog(log, LOG_INFO, "close_fits(): rename of %s to %s successful.\n", ctx->temp_fits_filename, ctx->fits_filename);
-  }
-  else
-  {
-    multilog(log, LOG_ERR, "close_fits(): ERROR renaming %s to %s.\n", ctx->temp_fits_filename, ctx->fits_filename);
+    if (rename(ctx->temp_fits_filename, ctx->fits_filename) == 0)
+    {
+      multilog(log, LOG_INFO, "close_fits(): rename of %s to %s successful.\n", ctx->temp_fits_filename, ctx->fits_filename);
+    }
+    else
+    {
+      multilog(log, LOG_ERR, "close_fits(): ERROR renaming %s to %s.\n", ctx->temp_fits_filename, ctx->fits_filename);
+    }
   }
 
   return (EXIT_SUCCESS);

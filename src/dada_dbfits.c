@@ -131,7 +131,9 @@ int dada_dbfits_open(dada_client_t *client)
     // Close existing fits file (if we have one)
     if (ctx->fits_ptr != NULL)
     {
-      if (close_fits(client, &ctx->fits_ptr))
+      int good_fits = 1;
+
+      if (close_fits(client, &ctx->fits_ptr, good_fits))
       {
         multilog(log, LOG_ERR, "dada_dbfits_open(): Error closing fits file.\n");
         return -1;
@@ -222,10 +224,14 @@ int dada_dbfits_open(dada_client_t *client)
       multilog(log, LOG_ERR, "dada_dbfits_open(): %s is less than the previous observation (%d < %d).\n", HEADER_OBS_OFFSET, ctx->obs_offset, new_obs_offset_sec);
       return -1;
     }
-    else if (new_obs_offset_sec - ctx->obs_offset != ctx->secs_per_subobs)
+    else if (new_obs_offset_sec - ctx->obs_offset > ctx->secs_per_subobs)
     {
-      multilog(log, LOG_ERR, "dada_dbfits_open(): %s did not increase by %d seconds (it was: %d).\n", HEADER_OBS_OFFSET, ctx->secs_per_subobs, new_obs_offset_sec - ctx->obs_offset);
-      return -1;
+      multilog(log, LOG_WARNING, "dada_dbfits_open(): %s did not increase by %d seconds (it was: %d). Skipping this observation...\n", HEADER_OBS_OFFSET, ctx->secs_per_subobs, new_obs_offset_sec - ctx->obs_offset);
+      // Set obs and subobs to 0 so the io and close methods know we have nothing to do but skip this obs until we get a fresh new one
+      ctx->obs_id = 0;
+      ctx->subobs_id = 0;
+
+      return EXIT_SUCCESS;
     }
     else
     {
@@ -383,6 +389,7 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
   multilog(log, LOG_INFO, "dada_dbfits_close(bytes_written=%lu): Started.\n", bytes_written);
 
   int do_close_fits = 0;
+  int good_fits = 0;
 
   // If we're still in CAPTURE mode...
   if (is_mwax_mode_correlator(ctx->mode) == 1)
@@ -407,11 +414,12 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
       if (current_duration >= ctx->exposure_sec)
       {
         do_close_fits = 1;
+        good_fits = 1;
       }
     }
     else
     {
-      multilog(log, LOG_WARNING, "dada_dbfits_close(): Unknown mode %s; (ignoring).\n", ctx->mode);
+      multilog(log, LOG_WARNING, "dada_dbfits_close(): Not in an observation (ignoring).\n");
       do_close_fits = 1;
     }
 
@@ -421,7 +429,7 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
       // Close existing fits file (if we have one)
       if (ctx->fits_ptr != NULL)
       {
-        if (close_fits(client, &ctx->fits_ptr))
+        if (close_fits(client, &ctx->fits_ptr, good_fits))
         {
           multilog(log, LOG_ERR, "dada_dbfits_close(): Error closing fits file.\n");
           return -1;

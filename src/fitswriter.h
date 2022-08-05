@@ -38,7 +38,7 @@
 
 int open_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
 int create_fits(dada_client_t *client, fitsfile **fptr, const char *filename);
-int close_fits(dada_client_t *client, fitsfile **fptr);
+int close_fits(dada_client_t *client, fitsfile **fptr, int fits_is_good);
 int create_fits_visibilities_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time,
                                     int marker, int baselines, int fine_channels, int polarisations, float *buffer, uint64_t bytes);
 int create_fits_weights_imghdu(dada_client_t *client, fitsfile *fptr, time_t unix_time, int unix_millisecond_time,
