@@ -16,8 +16,9 @@ scripts/env
 *.code-workspace
 .python-version
 tests/__pycache__/
-tests/test01/make_test01_data
 *.log
 *.dat
 *.tmp
+tests/test01/make_test01_data
 tests/test02/make_test02_data
+tests/test03/make_test03_data
