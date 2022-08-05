@@ -38,6 +38,15 @@ def test01_fits_file_has_correct_hdu_dimensions():
 
 
 def test01_check_hdu_values():
-    data = read_fits_hdu(TEST01_FITS_FILENAME, 1)
+    for t in range(0, 2):
+        data1 = read_fits_hdu(TEST01_FITS_FILENAME, 1 + (t * 4))
+        assert 1128 == np.sum(data1)
 
-    assert 1128 == np.sum(data)
+        data2 = read_fits_hdu(TEST01_FITS_FILENAME, 2 + (t * 4))
+        assert 1266 == np.sum(data2)
+
+        data3 = read_fits_hdu(TEST01_FITS_FILENAME, 3 + (t * 4))
+        assert 10728 == np.sum(data3)
+
+        data4 = read_fits_hdu(TEST01_FITS_FILENAME, 4 + (t * 4))
+        assert 3666 == np.sum(data4)

@@ -9,12 +9,14 @@ from tests_common import read_fits_hdu, count_fits_hdus
 TEST02_OBS1_TMP_FITS_FILENAME = (
     "test02/1324440018_20211225040000_ch148_000.fits.tmp"
 )
+TEST02_OBS1_FITS_FILENAME = "test02/1324440018_20211225040000_ch148_000.fits"
 TEST02_OBS2_FITS_FILENAME = "test02/1324440050_20211225040032_ch148_000.fits"
 
 
-def test02_obs1_tmp_fits_file_produced():
-    # Check a tmp FITS file was produced
-    assert os.path.exists(TEST02_OBS1_TMP_FITS_FILENAME)
+def test02_obs1_no_fits_file_produced():
+    # Check a FITS file was not produced
+    assert os.path.exists(TEST02_OBS1_TMP_FITS_FILENAME) is False
+    assert os.path.exists(TEST02_OBS1_FITS_FILENAME) is False
 
 
 def test02_obs2_fits_file_produced():
@@ -46,6 +48,14 @@ def test02_obs1_fits_file_has_correct_hdu_dimensions():
 
 
 def test02_obs1_check_hdu_values():
-    data = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 1)
+    data1 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 1)
+    assert 1128 == np.sum(data1)
 
-    assert 1128 == np.sum(data)
+    data2 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 2)
+    assert 1266 == np.sum(data2)
+
+    data3 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 3)
+    assert 10728 == np.sum(data3)
+
+    data4 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 4)
+    assert 3666 == np.sum(data4)

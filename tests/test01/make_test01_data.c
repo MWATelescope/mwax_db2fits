@@ -7,6 +7,13 @@
 
 #include "../common.h"
 
+#define NTIMESTEPS 2
+#define NTILES 2
+#define NBASELINES (NTILES * (NTILES + 1)) / 2
+#define NFINECHAN 2
+#define NPOLS 4   // xx,xy,yx,yy
+#define NVALUES 2 // r,i
+
 void usage()
 {
     printf("make_test01_data header output_file\n"
@@ -45,23 +52,16 @@ int main(int argc, char **argv)
     write_header(header_filename, output_filename, &output_file);
 
     // Create the visibilities data
-    int ntimesteps = 2;
-    int ntiles = 2;
-    int nbaselines = (ntiles * (ntiles + 1)) / 2;
-    int nfinechan = 2;
-    int npols = 4;   // xx,xy,yx,yy
-    int nvalues = 2; // r,i
-
-    for (int timestep = 1; timestep <= ntimesteps; timestep++)
+    for (int timestep = 1; timestep <= NTIMESTEPS; timestep++)
     {
         // Write visibilities
-        if (write_visibilities_hdu(output_file, nbaselines, nfinechan, npols, nvalues, timestep, ((timestep * 2) - 2) * 100) != EXIT_SUCCESS)
+        if (write_visibilities_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, ((timestep * 2) - 2) * 100) != EXIT_SUCCESS)
         {
             exit(EXIT_FAILURE);
         }
 
         // Write weights
-        if (write_weights_hdu(output_file, nbaselines, nfinechan, npols, nvalues, timestep, ((timestep * 2) - 1) * 100) != EXIT_SUCCESS)
+        if (write_weights_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, ((timestep * 2) - 1) * 100) != EXIT_SUCCESS)
         {
             exit(EXIT_FAILURE);
         }

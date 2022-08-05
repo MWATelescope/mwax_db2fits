@@ -12,15 +12,16 @@ mwax_db2fits/tests/test02$ ./run_test01.sh
 ```
 
 ## Objectives
-* Test that a 2 subobservation is handled if the 2nd subobs is offset by >8 seconds
+* Test that it is handled if the 2nd subobs of a 4 subobs obs is missing, and this next processes subobs3 which is offset by >8 seconds from subobs1
 * mwax_db2fits should start the complete writing out the .fits.tmp file after the first subobs
-* but when it hits the second subobs, should not the >8s gap and then skip the observation
+* but when it hits the next (third) subobs, should notice the >8s gap and then skip the observation
 * Until the next new observation/subobs comes around.
 * So:
 * Subobs 1: Obsid=1, offset=0 , duration=32: Create fits.tmp file
-* Subobs 2: Obsid=1, offset=16, duration=32: Skip
-* Subobs 3: Obsid=1, offset=24, duration=32: Skip
-* Subobs 4: Obsid=2, offset=0,  duration=8 : Start and finish new obs OK
+* Subobs 2: missing
+* Subobs 3: Obsid=1, offset=16, duration=32: Skip
+* Subobs 4: Obsid=1, offset=24, duration=32: Skip
+* Subobs 5: Obsid=2, offset=0,  duration=8 : Start and finish new obs OK
 
 ## Input data
 * Four PSRDADA headers for the 4 subobservations
@@ -32,12 +33,7 @@ mwax_db2fits/tests/test02$ ./run_test01.sh
 * Correlator mode: 640kHz, 4 sec
 
 ## Expected Outputs
-* A fits.tmp file for the first obsid which contains the first subobs:
-  * Primary HDU correctly populated
-  * ImageHD (timestep 1, visibilities) 16x3  
-  * ImageHD (timestep 1, weights) 4x3
-  * ImageHD (timestep 2, visibilities) 16x3
-  * ImageHD (timestep 2, weights) 4x3
+* No file output for first subobs/obs
 * A complete fits file for the second obsid, which has:
   * Primary HDU correctly populated
   * ImageHD (timestep 1, visibilities) 16x3  

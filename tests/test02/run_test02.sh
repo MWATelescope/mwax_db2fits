@@ -17,19 +17,21 @@ dada_db -k 2345 -n 8 -b 240
 echo "Create obs 1, subobservation 1"
 ./make_test02_data test02_obs1_header_1.txt test02_obs1_data1.dat
 
-echo "Create obs1, subobservation 2"
-./make_test02_data test02_obs1_header_2.txt test02_obs1_data2.dat
+echo "Skipping (on purpose) obs1, subobservation 2"
 
 echo "Create obs1, subobservation 3"
 ./make_test02_data test02_obs1_header_3.txt test02_obs1_data3.dat
+
+echo "Create obs1, subobservation 4"
+./make_test02_data test02_obs1_header_4.txt test02_obs1_data4.dat
 
 echo "Create obs2, subobservation 1"
 ./make_test02_data test02_obs2_header_1.txt test02_obs2_data1.dat
 
 echo "Load into ring buffers"
 dada_diskdb -s -k 2345 -f test02_obs1_data1.dat
-dada_diskdb -s -k 2345 -f test02_obs1_data2.dat
 dada_diskdb -s -k 2345 -f test02_obs1_data3.dat
+dada_diskdb -s -k 2345 -f test02_obs1_data4.dat
 dada_diskdb -s -k 2345 -f test02_obs2_data1.dat
 
 echo "Load our quit command into ring buffer"
