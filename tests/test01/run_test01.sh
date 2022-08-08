@@ -28,4 +28,4 @@ echo "Load our quit command into ring buffer"
 dada_diskdb -s -k 2345 -f ../quit_header.txt
 
 echo "Launching mwax_db2fits"
-../../bin/mwax_db2fits -k 2345 --destination-path=. -l 0 -n eth0 -i 224.0.2.2 -p 50001 | tee mwax_db2fits.log
+../../bin/mwax_db2fits -k 2345 --destination-path=. -l 0 -n eth0 -i 224.0.2.2 -p 50001 |& tee mwax_db2fits.log
