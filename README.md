@@ -1,27 +1,38 @@
 # mwax-db2fits
+
 MWA Correlator (mwax): PSRDADA ringbuffer to FITS file converter
+
 ## Dependencies
-### CFITSIO 
-- See https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html
-### psrdada prerequisites:
+
+### CFITSIO
+
+- See <https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>
+
+### psrdada prerequisites
+
 - pkg-config
 - libhwloc-dev (this is to enable the use of NUMA awareness in psrdada)
 - csh
 - autoconf
 - libtool
-### psrdada (http://psrdada.sourceforge.net/)
-- download the source from the cvs repo (http://psrdada.sourceforge.net/current/)
-- build (http://psrdada.sourceforge.net/current/build.shtml)
+
+### psrdada (<http://psrdada.sourceforge.net/>)
+
+- download the source from the cvs repo (<http://psrdada.sourceforge.net/current/>)
+- build (<http://psrdada.sourceforge.net/current/build.shtml>)
 
 ## Building
-```
-$ cmake CMakeLists.txt
-$ make
+
+```bash
+cmake CMakeLists.txt
+make
 ```
 
 ## Running / Command line Arguments
+
 Example from `mwax_db2fits --help`
-```
+
+```bash
 mwax_db2fits v0.10.3
 
 Usage: mwax_db2fits [OPTION]...
