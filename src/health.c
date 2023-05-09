@@ -2,7 +2,7 @@
  * @file health.c
  * @author Greg Sleap
  * @date 4 Jul 2018
- * @brief This is the code that provides health information to M&C
+ * @brief This is the code that sends health information to M&C via UDP
  *
  */
 #include <arpa/inet.h>
@@ -111,6 +111,10 @@ void *health_thread_fn(void *args)
     // Gather stats
     health_udp_data_s out_udp_data;
 
+    // Weights
+    out_udp_data.weights_per_tile_xx = NULL;
+    out_udp_data.weights_per_tile_yy = NULL;
+
     // Version info
     out_udp_data.version_major = MWAX_DB2FITS_VERSION_MAJOR;
     out_udp_data.version_minor = MWAX_DB2FITS_VERSION_MINOR;
@@ -122,22 +126,76 @@ void *health_thread_fn(void *args)
     // Time
     out_udp_data.start_time = start_time;
 
-    int quit = 0;
+    int quit = quit_get();
 
     while (!quit)
     {
-        // Check quit status
-        quit = get_quit();
+        int ntiles = g_ctx.ninputs / 2;
 
         out_udp_data.health_time = time(NULL);
         out_udp_data.up_time = difftime(out_udp_data.health_time, start_time);
 
-        // Current work item
-        if (get_health(&out_udp_data.status, &out_udp_data.obs_id, &out_udp_data.subobs_id) != EXIT_SUCCESS)
+        // Get current info
+        pthread_mutex_lock(&g_health_manager_mutex);
+        out_udp_data.status = g_health_manager.status;
+        out_udp_data.obs_id = g_health_manager.obs_id;
+        out_udp_data.subobs_id = g_health_manager.subobs_id;
+
+        // We want to provide the health packet with an average
+        // of the weights we've been accumulating,
+        // but only if we have at least 1 set of weights
+        if (g_health_manager.weights_counter > 0)
         {
-            multilog(health_args->log, LOG_ERR, "Health: Error getting health data.\n");
-            exit(EXIT_FAILURE);
+            // Ensure array is initialised
+            if (out_udp_data.weights_per_tile_xx == NULL)
+            {
+                out_udp_data.weights_per_tile_xx = calloc(ntiles, sizeof(float));
+                out_udp_data.weights_per_tile_yy = calloc(ntiles, sizeof(float));
+            }
+
+            for (int tile = 0; tile < ntiles; tile++)
+            {
+                out_udp_data.weights_per_tile_xx[tile] = g_health_manager.weights_per_tile_xx[tile] / g_health_manager.weights_counter;
+                out_udp_data.weights_per_tile_yy[tile] = g_health_manager.weights_per_tile_yy[tile] / g_health_manager.weights_counter;
+            }
         }
+
+        // debug dump of health
+        char health_debug_string[2048];
+        snprintf(health_debug_string,
+                 2048,
+                 "v=%d.%d.%d h=%s start=%ld now=%ld up=%g st=%d obsid=%ld subobs=%ld",
+                 out_udp_data.version_major,
+                 out_udp_data.version_minor,
+                 out_udp_data.version_build,
+                 out_udp_data.hostname,
+                 out_udp_data.start_time,
+                 out_udp_data.health_time,
+                 out_udp_data.up_time,
+                 out_udp_data.status,
+                 out_udp_data.obs_id,
+                 out_udp_data.subobs_id);
+
+        // If we have weights array initialised we'll dump it
+        char xx_health_debug_string[2048] = "xx=";
+        char yy_health_debug_string[2048] = "yy=";
+        if (out_udp_data.weights_per_tile_xx != NULL)
+        {
+            for (int tile = 0; tile < ntiles; tile++)
+            {
+                char tmp[8];
+
+                snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_xx[tile]);
+                strncat(xx_health_debug_string, tmp, 8);
+                snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_yy[tile]);
+                strncat(yy_health_debug_string, tmp, 8);
+            }
+        }
+
+        // put all the log info together
+        multilog(health_args->log, LOG_DEBUG, "health: %s %s %s\n", health_debug_string, xx_health_debug_string, yy_health_debug_string);
+
+        pthread_mutex_unlock(&g_health_manager_mutex);
 
         // send the message
         if (sendto(sock, &out_udp_data, sizeof(health_udp_data_s), 0,
@@ -150,7 +208,22 @@ void *health_thread_fn(void *args)
 
         // Wait for 1 second
         sleep(HEALTH_SLEEP_SECONDS);
+
+        // Check quit status
+        quit = quit_get();
     }
+
+    multilog(health_args->log, LOG_DEBUG, "Health: quit detected. Shutting down. Freeing weights memory...\n");
+
+    // Free the out_udp_data weights memory
+    if (out_udp_data.weights_per_tile_xx != NULL)
+    {
+        free(out_udp_data.weights_per_tile_xx);
+        free(out_udp_data.weights_per_tile_yy);
+    }
+
+    // destroy the mutex and free the g_health_manager weights memory
+    health_manager_destroy();
 
     multilog(health_args->log, LOG_DEBUG, "Health: Closing socket.\n");
     if (sock)
@@ -158,9 +231,9 @@ void *health_thread_fn(void *args)
         close(sock);
     }
 
-    multilog(health_args->log, LOG_INFO, "Health: Thread finished.\n");
-
     free(health_args->health_udp_interface_ip);
+
+    multilog(health_args->log, LOG_INFO, "Health: Thread finished.\n");
 
     return EXIT_SUCCESS;
 }

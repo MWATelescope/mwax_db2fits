@@ -2,7 +2,7 @@
  * @file global.h
  * @author Greg Sleap
  * @date 5 Jul 2018
- * @brief This is the header for anything global 
+ * @brief This is the header for anything global
  *
  */
 #pragma once
@@ -47,6 +47,18 @@ typedef struct
     // Data that changes during main loop
     long obs_id;
     long subobs_id;
+    // The weights are in the dada datablock in after the visibilties.
+    // Here we keep 2 arrays of floats, 1 element per tile
+    // and accumulate the weights and increment the weights
+    // counter each time we accumulate. We want to get the tile weights,
+    // so we cheat and use the XX and YY (the weights given to mwax_db2fits
+    // are for baselines, not tiles).
+    // Then each health tick, we get the average weight for xx and yy
+    // (using weights_counter as the denominator) and send this with
+    // the health packet.
+    float *weights_per_tile_xx;
+    float *weights_per_tile_yy;
+    int weights_counter;
 } health_thread_data_s;
 
 typedef struct dada_db_s
@@ -116,16 +128,18 @@ typedef struct dada_db_s
 } dada_db_s;
 
 // Methods for the Quit mutex
-int initialise_quit();
-int set_quit(int value);
-int get_quit();
-int destroy_quit();
+int quit_init();
+int quit_set(int value);
+int quit_get();
+int quit_destroy();
 
-// Methods for the Health mutex
-int initialise_health();
-int set_health(int status, long obs_id, long subobs_id);
-int get_health(int *status, long *obs_id, long *subobs_id);
-int destroy_health();
+// Methods for managing data which will be used eventually to send health packets
+int health_manager_init();
+int health_manager_set_info(int status, long obs_id, long subobs_id);
+int health_manager_get_info(int *status, long *obs_id, long *subobs_id, float **weights_per_tile_xx, float **weights_per_tile_yy);
+int health_manager_set_weights_info(float *buffer);
+int health_manager_reset_health_weights_info();
+int health_manager_destroy();
 
 // Method for compression mode
 const char *compression_mode_name(int compression_mode);
@@ -136,8 +150,8 @@ const char *compression_mode_name(int compression_mode);
 extern pthread_mutex_t g_quit_mutex;
 extern int g_quit;
 
-extern pthread_mutex_t g_health_mutex;
-extern health_thread_data_s g_health;
+extern pthread_mutex_t g_health_manager_mutex;
+extern health_thread_data_s g_health_manager;
 
 extern dada_db_s g_ctx;
 #endif

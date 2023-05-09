@@ -2,6 +2,7 @@
 # Test01: Analyse output files and/or logs from this test of mwax_db2fits
 #
 from astropy.io import fits
+from math import isclose
 import numpy as np
 import os
 from tests_common import read_fits_hdu, count_fits_hdus
@@ -37,16 +38,23 @@ def test01_fits_file_has_correct_hdu_dimensions():
             assert d.shape[1] == 4
 
 
-def test01_check_hdu_values():
-    for t in range(0, 2):
-        data1 = read_fits_hdu(TEST01_FITS_FILENAME, 1 + (t * 4))
-        assert 1128 == np.sum(data1)
+def test01_check_hdu_values():    
+    data1 = read_fits_hdu(TEST01_FITS_FILENAME, 1)
+    assert 5928 == np.sum(data1)
+    weights1 = read_fits_hdu(TEST01_FITS_FILENAME, 2)
+    assert isclose(3.3, np.sum(weights1), rel_tol=1e-6)
 
-        data2 = read_fits_hdu(TEST01_FITS_FILENAME, 2 + (t * 4))
-        assert 1266 == np.sum(data2)
+    data2 = read_fits_hdu(TEST01_FITS_FILENAME, 3)
+    assert 10728 == np.sum(data2)
+    weights2 = read_fits_hdu(TEST01_FITS_FILENAME, 4)
+    assert isclose(3.9, np.sum(weights2), rel_tol=1e-6)
 
-        data3 = read_fits_hdu(TEST01_FITS_FILENAME, 3 + (t * 4))
-        assert 10728 == np.sum(data3)
+    data3 = read_fits_hdu(TEST01_FITS_FILENAME, 5)
+    assert 15528 == np.sum(data3)
+    weights3 = read_fits_hdu(TEST01_FITS_FILENAME, 6)
+    assert isclose(4.5, np.sum(weights3), rel_tol=1e-6)
 
-        data4 = read_fits_hdu(TEST01_FITS_FILENAME, 4 + (t * 4))
-        assert 3666 == np.sum(data4)
+    data4 = read_fits_hdu(TEST01_FITS_FILENAME, 7)
+    assert 20328 == np.sum(data4)
+    weights4 = read_fits_hdu(TEST01_FITS_FILENAME, 8)
+    assert isclose(5.1, np.sum(weights4), rel_tol=1e-6)

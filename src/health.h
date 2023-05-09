@@ -2,7 +2,7 @@
  * @file health.h
  * @author Greg Sleap
  * @date 4 Jul 2018
- * @brief This is the header for the code that provides health information to M&C
+ * @brief This is the header for the code that sends health information to M&C via UDP
  *
  */
 #pragma once
@@ -24,6 +24,9 @@ typedef struct
     int status;     // 1=RUNNING, 2=SHUTTING_DOWN
     long obs_id;    // Obsid of current obs or 0 if not currently processing an observation
     long subobs_id; // Subobsid of current subobs or 0 if not currently processing a sub observation
+    float *weights_per_tile_xx;
+    float *weights_per_tile_yy;
+
 } health_udp_data_s;
 #pragma pack(pop)
 

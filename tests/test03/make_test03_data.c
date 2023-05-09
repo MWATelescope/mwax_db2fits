@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         }
 
         // Write weights
-        if (write_weights_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, ((timestep * 2) - 1) * 100) != EXIT_SUCCESS)
+        if (write_weights_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, 0.05 * (timestep - 1)) != EXIT_SUCCESS)
         {
             exit(EXIT_FAILURE);
         }

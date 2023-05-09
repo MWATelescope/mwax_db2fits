@@ -10,6 +10,7 @@
 #include "dada_dbfits.h"
 #include "../mwax_common/mwax_global_defs.h" // From mwax-common
 #include "global.h"
+#include "health.h"
 #include "utils.h"
 
 /**
@@ -312,11 +313,17 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
         }
         else
         {
+          // Update weights in health struct
+          if (health_manager_set_weights_info(ptr_weights) != EXIT_SUCCESS)
+          {
+            // Error!
+            multilog(log, LOG_ERR, "dada_dbfits_io(): Error setting health weights.\n");
+            return -1;
+          }
+
           wrote = to_write;
           written += wrote;
           ctx->fits_file_size = ctx->fits_file_size + visibility_hdu_bytes + weights_hdu_bytes;
-
-          // multilog(log, LOG_INFO, "dada_dbfits_io(): Current fits file size: %ld / %ld\n", ctx->fits_file_size, ctx->fits_file_size_limit);
 
           ctx->obs_marker_number += 1; // Increment the marker number
 
@@ -439,7 +446,7 @@ int dada_dbfits_close(dada_client_t *client, uint64_t bytes_written)
   }
 
   // update health- we are no longer in an observation
-  set_health(STATUS_RUNNING, 0, 0);
+  health_manager_set_info(STATUS_RUNNING, 0, 0);
 
   multilog(log, LOG_INFO, "dada_dbfits_close(): completed\n");
 
@@ -777,7 +784,7 @@ int read_dada_header(dada_client_t *client)
   multilog(log, LOG_INFO, "mwax_db2corr2db version:  %s\n", ctx->mwax_db2correlate2db_version);
 
   // Update health info
-  if (set_health(STATUS_RUNNING, ctx->obs_id, ctx->subobs_id) != EXIT_SUCCESS)
+  if (health_manager_set_info(STATUS_RUNNING, ctx->obs_id, ctx->subobs_id) != EXIT_SUCCESS)
   {
     multilog(log, LOG_ERR, "read_dada_header(): Error setting health data");
     return -1;
@@ -892,6 +899,13 @@ int process_new_observation(dada_client_t *client, long new_obs_id, long new_sub
 
   // Reset the filenumber
   ctx->fits_file_number = 0;
+
+  // Reset weights counter and array
+  if (health_manager_reset_health_weights_info() != EXIT_SUCCESS)
+  {
+    multilog(log, LOG_ERR, "read_dada_header(): Error resetting health weight data");
+    return -1;
+  }
 
   return EXIT_SUCCESS;
 }

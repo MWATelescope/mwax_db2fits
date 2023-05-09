@@ -2,6 +2,7 @@
 # Test03: Analyse output files and/or logs from this test of mwax_db2fits
 #
 from astropy.io import fits
+from math import isclose
 import numpy as np
 import os
 from tests_common import read_fits_hdu, count_fits_hdus
@@ -67,19 +68,16 @@ def test03_fits_file_2_has_correct_hdu_dimensions():
 
 
 def test03_check_fits_file_1_hdu_values():
-    for t in range(0, 2):
-        data1 = read_fits_hdu(TEST03_FITS_FILENAME_1, 1 + (t * 4))
-        assert 1128 == np.sum(data1)
+    data1 = read_fits_hdu(TEST03_FITS_FILENAME_1, 1)
+    assert 1128 == np.sum(data1)
+    weights1 = read_fits_hdu(TEST03_FITS_FILENAME_1, 2)
+    assert 3.3 == np.sum(weights1)
 
-        data2 = read_fits_hdu(TEST03_FITS_FILENAME_1, 2 + (t * 4))
-        assert 1266 == np.sum(data2)
-
-        data3 = read_fits_hdu(TEST03_FITS_FILENAME_1, 3 + (t * 4))
-        assert 10728 == np.sum(data3)
-
-        data4 = read_fits_hdu(TEST03_FITS_FILENAME_1, 4 + (t * 4))
-        assert 3666 == np.sum(data4)
-
+    data2 = read_fits_hdu(TEST03_FITS_FILENAME_1, 3)
+    assert 10728 == np.sum(data2)
+    weights2 = read_fits_hdu(TEST03_FITS_FILENAME_1, 4)
+    assert 3.9 == np.sum(weights2)
+    
 
 def test03_check_fits_file_2_hdu_values():
     data1 = read_fits_hdu(TEST03_FITS_FILENAME_2, 1)

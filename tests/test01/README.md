@@ -1,7 +1,8 @@
 # Test 01: Normal observation
 
 ## Instructions
-```
+
+```bash
 mwax_db2fits$ cd tests
 mwax_db2fits/tests$ build_tests.sh
 mwax_db2fits/tests$ cd test01
@@ -9,9 +10,11 @@ mwax_db2fits/tests/test01$ ./run_test01.sh
 ```
 
 ## Objectives
+
 * Test that a normal 2 subobservation (16 sec) observation is processed correctly
 
 ## Input data
+
 * Two PSRDADA headers for the 2 subobservations
 * Two generated data files for the 2 subobservations
 * 4 timesteps (2 per subobs)
@@ -21,6 +24,7 @@ mwax_db2fits/tests/test01$ ./run_test01.sh
 * Correlator mode: 640kHz, 4 sec
 
 ## Expected Outputs
+
 * A single fits file, which has:
   * Primary HDU correctly populated
   * ImageHD (timestep 1, visibilities) 16x3  

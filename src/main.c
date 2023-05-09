@@ -35,7 +35,7 @@ void sig_handler(int signum)
     printf("Received signal %d\n", signum);
 
   // If we have things running, tell them to stop!
-  set_quit(1);
+  quit_set(1);
 }
 
 /**
@@ -91,8 +91,8 @@ int main(int argc, char *argv[])
 
   // This tells us if we need to quit
   int quit = 0;
-  initialise_quit(); // Setup quit mutex
-  set_quit(quit);
+  quit_init(); // Setup quit mutex
+  quit_set(quit);
 
   // Catch SIGINT and SIGTERM
   multilog(g_ctx.log, LOG_INFO, "main(): Configured to catch SIGINT.\n");
@@ -143,25 +143,31 @@ int main(int argc, char *argv[])
   multilog(g_ctx.log, LOG_INFO, "main(): Block size (one integration) is %lu bytes.\n", g_ctx.block_size);
 
   // Zero the structure
-  memset(&g_health, 0, sizeof(g_health));
+  memset(&g_health_manager, 0, sizeof(g_health_manager));
 
-  g_health.log = logger;
-  g_health.status = STATUS_RUNNING;
-  g_health.header_block = client->header_block;
-  g_health.data_block = (ipcbuf_t *)client->data_block;
-  g_health.health_udp_interface = globalArgs.health_netiface;
-  g_health.health_udp_ip = globalArgs.health_ip;
-  g_health.health_udp_port = globalArgs.health_port;
-  g_health.obs_id = 0;
-  g_health.subobs_id = 0;
+  // Initialise health
+  health_manager_init();
 
-  strncpy(g_health.hostname, g_ctx.hostname, HOST_NAME_LEN);
+  g_health_manager.log = logger;
+  g_health_manager.status = STATUS_RUNNING;
+  g_health_manager.header_block = client->header_block;
+  g_health_manager.data_block = (ipcbuf_t *)client->data_block;
+  g_health_manager.health_udp_interface = globalArgs.health_netiface;
+  g_health_manager.health_udp_ip = globalArgs.health_ip;
+  g_health_manager.health_udp_port = globalArgs.health_port;
+  g_health_manager.obs_id = 0;
+  g_health_manager.subobs_id = 0;
+
+  strncpy(g_health_manager.hostname, g_ctx.hostname, HOST_NAME_LEN);
 
   multilog(g_ctx.log, LOG_INFO, "main(): Launching health thread...\n");
 
   // Launch Health thread
   pthread_t health_thread;
-  pthread_create(&health_thread, NULL, health_thread_fn, (void *)&g_health);
+  pthread_create(&health_thread, NULL, health_thread_fn, (void *)&g_health_manager);
+
+  // Wait a few seconds for health to start
+  sleep(4);
 
   // main loop
   multilog(g_ctx.log, LOG_INFO, "main(): mwax_db2fits is statred and ready to read from ringbuffer.\n");
@@ -172,15 +178,15 @@ int main(int argc, char *argv[])
     if (dada_client_read(client) < 0)
     {
       multilog(g_ctx.log, LOG_ERR, "main: error during transfer\n");
-      set_quit(1);
+      quit_set(1);
     }
 
     // Check quit status
-    quit = get_quit();
+    quit = quit_get();
 
     if (quit)
     {
-      g_health.status = STATUS_SHUTTING_DOWN;
+      g_health_manager.status = STATUS_SHUTTING_DOWN;
       client->quit = 1;
     }
     else
@@ -224,7 +230,7 @@ int main(int argc, char *argv[])
   multilog_close(logger);
 
   // Destroy mutexes
-  destroy_quit();
+  quit_destroy();
 
   return EXIT_SUCCESS;
 }
