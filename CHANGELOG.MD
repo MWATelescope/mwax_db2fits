@@ -2,6 +2,10 @@
 
 Changes in each release are listed below.
 
+## 0.12.2 10-May-2023
+
+* Rebuilt with fixed version of mwax_common which resolves issue with detection of VCS mode for MWAX_BUFFER and QUIT modes.
+
 ## 0.12.1 27-Apr-2023
 
 * Updated mwax_common with MWAX_BUFFER support
