@@ -69,25 +69,33 @@ def test03_fits_file_2_has_correct_hdu_dimensions():
 
 def test03_check_fits_file_1_hdu_values():
     data1 = read_fits_hdu(TEST03_FITS_FILENAME_1, 1)
-    assert 1128 == np.sum(data1)
+    assert 6024 == np.sum(data1)
     weights1 = read_fits_hdu(TEST03_FITS_FILENAME_1, 2)
-    assert 3.3 == np.sum(weights1)
+    assert isclose(3.96, np.sum(weights1), rel_tol=10e-6)
 
     data2 = read_fits_hdu(TEST03_FITS_FILENAME_1, 3)
-    assert 10728 == np.sum(data2)
+    assert 10920 == np.sum(data2)
     weights2 = read_fits_hdu(TEST03_FITS_FILENAME_1, 4)
-    assert 3.9 == np.sum(weights2)
-    
+    assert isclose(4.68, np.sum(weights2), rel_tol=10e-6)
+
+    data3 = read_fits_hdu(TEST03_FITS_FILENAME_1, 5)
+    assert 15816 == np.sum(data3)
+    weights3 = read_fits_hdu(TEST03_FITS_FILENAME_1, 6)
+    assert isclose(5.4, np.sum(weights3), rel_tol=10e-6)
+
+    data4 = read_fits_hdu(TEST03_FITS_FILENAME_1, 7)
+    assert 20712 == np.sum(data4)
+    weights4 = read_fits_hdu(TEST03_FITS_FILENAME_1, 8)
+    assert isclose(6.12, np.sum(weights4), rel_tol=10e-6)
+
 
 def test03_check_fits_file_2_hdu_values():
     data1 = read_fits_hdu(TEST03_FITS_FILENAME_2, 1)
-    assert 1128 == np.sum(data1)
+    assert 25608 == np.sum(data1)
+    weights1 = read_fits_hdu(TEST03_FITS_FILENAME_2, 2)
+    assert isclose(6.84, np.sum(weights1), rel_tol=10e-6)
 
-    data2 = read_fits_hdu(TEST03_FITS_FILENAME_2, 2)
-    assert 1266 == np.sum(data2)
-
-    data3 = read_fits_hdu(TEST03_FITS_FILENAME_2, 3)
-    assert 10728 == np.sum(data3)
-
-    data4 = read_fits_hdu(TEST03_FITS_FILENAME_2, 4)
-    assert 3666 == np.sum(data4)
+    data2 = read_fits_hdu(TEST03_FITS_FILENAME_2, 3)
+    assert 30504 == np.sum(data2)
+    weights2 = read_fits_hdu(TEST03_FITS_FILENAME_2, 4)
+    assert isclose(7.56, np.sum(weights2), rel_tol=10e-6)

@@ -15,18 +15,18 @@ echo "Creating ring buffers (8 buffers of 240 bytes)"
 dada_db -k 2345 -n 8 -b 240
 
 echo "Create obs 1, subobservation 1"
-./make_test02_data test02_obs1_header_1.txt test02_obs1_data1.dat
+./make_test02_data 1 test02_obs1_header_1.txt test02_obs1_data1.dat
 
 echo "Skipping (on purpose) obs1, subobservation 2"
 
 echo "Create obs1, subobservation 3"
-./make_test02_data test02_obs1_header_3.txt test02_obs1_data3.dat
+./make_test02_data 3 test02_obs1_header_3.txt test02_obs1_data3.dat
 
 echo "Create obs1, subobservation 4"
-./make_test02_data test02_obs1_header_4.txt test02_obs1_data4.dat
+./make_test02_data 4 test02_obs1_header_4.txt test02_obs1_data4.dat
 
 echo "Create obs2, subobservation 1"
-./make_test02_data test02_obs2_header_1.txt test02_obs2_data1.dat
+./make_test02_data 1 test02_obs2_header_1.txt test02_obs2_data1.dat
 
 echo "Load into ring buffers"
 dada_diskdb -s -k 2345 -f test02_obs1_data1.dat

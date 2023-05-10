@@ -9,14 +9,14 @@
 
 #define NTIMESTEPS 2
 #define NTILES 2
-#define NBASELINES (NTILES * (NTILES + 1)) / 2
+#define NBASELINES ((NTILES * (NTILES + 1)) / 2)
 #define NFINECHAN 2
 #define NPOLS 4   // xx,xy,yx,yy
 #define NVALUES 2 // r,i
 
 void usage()
 {
-    printf("make_test01_data header output_file\n"
+    printf("make_test01_data subobs_number header output_file\n"
            "subobs_number subobs number (1-based) e.g. 1,2...\n"
            "header        DADA header file contain obs metadata\n"
            "output_file   Output data filename\n");
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         }
 
         // Write weights
-        if (write_weights_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, (((subobs_number - 1) * NTIMESTEPS) + (timestep - 1)) * 0.05) != EXIT_SUCCESS)
+        if (write_weights_hdu(output_file, NBASELINES, NFINECHAN, NPOLS, NVALUES, timestep, (((subobs_number - 1) * NTIMESTEPS) + (timestep - 1)) * 0.05, 0.05) != EXIT_SUCCESS)
         {
             exit(EXIT_FAILURE);
         }

@@ -48,33 +48,13 @@ def test02_obs1_fits_file_has_correct_hdu_dimensions():
             assert d.shape[1] == 4
 
 
-def test02_obs1_check_hdu_values():
-    data1 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 1)
-    assert 1128 == np.sum(data1)
-    weights1 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 2)
-    assert 3.3 == np.sum(weights1)
+def test02_obs2_check_hdu_values():
+    data1 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 1)
+    assert 5976 == np.sum(data1)
+    weights1 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 2)
+    assert isclose(2.64, np.sum(weights1), rel_tol=1e-6)
 
-    data2 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 3)
-    assert 10728 == np.sum(data2)
-    weights2 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 4)
-    assert 3.9 == np.sum(weights2)
-
-    data3 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 5)
-    assert 1128 == np.sum(data3)
-    weights3 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 6)
-    assert 4.5 == np.sum(weights3)
-
-    data4 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 7)
-    assert 10728 == np.sum(data4)
-    weights4 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 8)
-    assert 5.1 == np.sum(weights4)
-
-    data5 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 9)
-    assert 1128 == np.sum(data5)
-    weights5 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 10)
-    assert 5.7 == np.sum(weights5)
-
-    data6 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 11)
-    assert 10728 == np.sum(data6)
-    weights6 = read_fits_hdu(TEST02_OBS1_FITS_FILENAME, 12)
-    assert 6.3 == np.sum(weights6)
+    data2 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 3)
+    assert 10824 == np.sum(data2)
+    weights2 = read_fits_hdu(TEST02_OBS2_FITS_FILENAME, 4)
+    assert isclose(3.12, np.sum(weights2), rel_tol=1e-6)

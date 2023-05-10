@@ -66,7 +66,7 @@ int write_visibilities_hdu(int output_file, int nbaselines, int nfinechan, int n
     return EXIT_SUCCESS;
 }
 
-int write_weights_hdu(int output_file, int nbaselines, int nfinechan, int npols, int nvalues, int timestep, float start_number)
+int write_weights_hdu(int output_file, int nbaselines, int nfinechan, int npols, int nvalues, int timestep, float start_number, float increment)
 {
     int buffer_len = nbaselines * npols;
     int buffer_bytes = buffer_len * sizeof(float);
@@ -75,7 +75,7 @@ int write_weights_hdu(int output_file, int nbaselines, int nfinechan, int npols,
     // Fill buffer with values
     for (int n = 0; n < buffer_len; n++)
     {
-        buffer[n] = start_number + ((float)n * 0.05);
+        buffer[n] = start_number + ((float)n * increment);
     }
 
     // Write to disk
