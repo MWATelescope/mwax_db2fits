@@ -18,8 +18,8 @@ link_directories(${CMAKE_SOURCE_DIR}/lib /usr/local/cuda/lib64)        # -L flag
 set(PROGSRC src/main.c src/args.c ../mwax_common/mwax_global_defs.c src/dada_dbfits.c src/fitswriter.c src/global.c src/health.c src/utils.c)            # define sources
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS_DEBUG "-g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+    set(CMAKE_C_FLAGS_DEBUG "-g -DDEBUG")
+    set(CMAKE_C_FLAGS_RELEASE "-O3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wextra")    
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)

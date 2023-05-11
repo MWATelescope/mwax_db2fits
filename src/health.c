@@ -6,6 +6,7 @@
  *
  */
 #include <arpa/inet.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -111,9 +112,12 @@ void *health_thread_fn(void *args)
     // Gather stats
     health_udp_data_s out_udp_data;
 
-    // Weights
-    out_udp_data.weights_per_tile_xx = NULL;
-    out_udp_data.weights_per_tile_yy = NULL;
+    // initialise Weights in UDP struct
+    for (int i = 0; i < NTILES_MAX; i++)
+    {
+        out_udp_data.weights_per_tile_x[i] = NAN;
+        out_udp_data.weights_per_tile_y[i] = NAN;
+    }
 
     // Version info
     out_udp_data.version_major = MWAX_DB2FITS_VERSION_MAJOR;
@@ -130,8 +134,6 @@ void *health_thread_fn(void *args)
 
     while (!quit)
     {
-        int ntiles = g_ctx.ninputs / 2;
-
         out_udp_data.health_time = time(NULL);
         out_udp_data.up_time = difftime(out_udp_data.health_time, start_time);
 
@@ -144,23 +146,43 @@ void *health_thread_fn(void *args)
         // We want to provide the health packet with an average
         // of the weights we've been accumulating,
         // but only if we have at least 1 set of weights
+
+        // NOTE: before the first obs comes through ninputs will be 0!
+        // and weights counter will be 0 too
+        int ntiles = g_ctx.ninputs / 2;
+
+        // If there has been at least one timestep with weights since the last health packet we will have ntiles>0 too...
         if (g_health_manager.weights_counter > 0)
         {
-            // Ensure array is initialised
-            if (out_udp_data.weights_per_tile_xx == NULL)
-            {
-                out_udp_data.weights_per_tile_xx = calloc(ntiles, sizeof(float));
-                out_udp_data.weights_per_tile_yy = calloc(ntiles, sizeof(float));
-            }
-
+            // Store the average weight per tile and pol in the UDP health struct
             for (int tile = 0; tile < ntiles; tile++)
             {
-                out_udp_data.weights_per_tile_xx[tile] = g_health_manager.weights_per_tile_xx[tile] / g_health_manager.weights_counter;
-                out_udp_data.weights_per_tile_yy[tile] = g_health_manager.weights_per_tile_yy[tile] / g_health_manager.weights_counter;
+                out_udp_data.weights_per_tile_x[tile] = g_health_manager.weights_per_tile_x[tile] / g_health_manager.weights_counter;
+                out_udp_data.weights_per_tile_y[tile] = g_health_manager.weights_per_tile_y[tile] / g_health_manager.weights_counter;
+            }
+
+            // reset the weights now that we have got them ready to send via UDP
+            g_health_manager.weights_counter = 0;
+            for (int tile = 0; tile < ntiles; tile++)
+            {
+                g_health_manager.weights_per_tile_x[tile] = 0.0;
+                g_health_manager.weights_per_tile_y[tile] = 0.0;
+            }
+        }
+        else
+        {
+            // There has not been any new weights info since we sent the last health packet
+            // So set the UDP weights array to NaNs
+            for (int tile = 0; tile < NTILES_MAX; tile++)
+            {
+                out_udp_data.weights_per_tile_x[tile] = NAN;
+                out_udp_data.weights_per_tile_y[tile] = NAN;
             }
         }
 
-        // debug dump of health
+        pthread_mutex_unlock(&g_health_manager_mutex);
+// debug dump of health
+#ifdef DEBUG
         char health_debug_string[2048];
         snprintf(health_debug_string,
                  2048,
@@ -179,23 +201,26 @@ void *health_thread_fn(void *args)
         // If we have weights array initialised we'll dump it
         char xx_health_debug_string[2048] = "xx=";
         char yy_health_debug_string[2048] = "yy=";
-        if (out_udp_data.weights_per_tile_xx != NULL)
-        {
-            for (int tile = 0; tile < ntiles; tile++)
-            {
-                char tmp[8];
 
-                snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_xx[tile]);
-                strncat(xx_health_debug_string, tmp, 8);
-                snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_yy[tile]);
-                strncat(yy_health_debug_string, tmp, 8);
-            }
+        int tiles_to_dump = 1;
+        if (ntiles > 0)
+        {
+            tiles_to_dump = ntiles;
+        }
+
+        for (int tile = 0; tile < tiles_to_dump; tile++)
+        {
+            char tmp[8];
+
+            snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_x[tile]);
+            strncat(xx_health_debug_string, tmp, 8);
+            snprintf(tmp, 8, "%5.3f,", out_udp_data.weights_per_tile_y[tile]);
+            strncat(yy_health_debug_string, tmp, 8);
         }
 
         // put all the log info together
-        multilog(health_args->log, LOG_DEBUG, "health: %s %s %s\n", health_debug_string, xx_health_debug_string, yy_health_debug_string);
-
-        pthread_mutex_unlock(&g_health_manager_mutex);
+        multilog(health_args->log, LOG_DEBUG, "health: %s %s %s. Resetting weights...\n", health_debug_string, xx_health_debug_string, yy_health_debug_string);
+#endif
 
         // send the message
         if (sendto(sock, &out_udp_data, sizeof(health_udp_data_s), 0,
@@ -214,13 +239,6 @@ void *health_thread_fn(void *args)
     }
 
     multilog(health_args->log, LOG_DEBUG, "Health: quit detected. Shutting down. Freeing weights memory...\n");
-
-    // Free the out_udp_data weights memory
-    if (out_udp_data.weights_per_tile_xx != NULL)
-    {
-        free(out_udp_data.weights_per_tile_xx);
-        free(out_udp_data.weights_per_tile_yy);
-    }
 
     // destroy the mutex and free the g_health_manager weights memory
     health_manager_destroy();

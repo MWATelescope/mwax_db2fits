@@ -38,7 +38,7 @@ def test01_fits_file_has_correct_hdu_dimensions():
             assert d.shape[1] == 4
 
 
-def test01_check_hdu_values():    
+def test01_check_hdu_values():
     data1 = read_fits_hdu(TEST01_FITS_FILENAME, 1)
     assert 5928 == np.sum(data1)
     weights1 = read_fits_hdu(TEST01_FITS_FILENAME, 2)

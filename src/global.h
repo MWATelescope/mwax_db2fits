@@ -31,6 +31,9 @@
 #define IP_AS_STRING_LEN 16                            // xxx.xxx.xxx.xxx
 #define COARSE_CHANNEL_MAX 255                         // Highest possible coarse channel number
 #define INT_TIME_MSEC_MIN 200                          // Minimum integration time (milliseconds)
+#define NTILES_MAX 256                                 // Maxium number of tiles. This is ONLY used by the health packets. It's convenient to have a fixed array for the health packets
+                                                       // since before we see the first observation we won't know how many tiles to expect, meaning the receiving code handling the health
+                                                       // packets needs to be overly complex to handly 0 or n tiles.
 
 typedef struct
 {
@@ -56,8 +59,8 @@ typedef struct
     // Then each health tick, we get the average weight for xx and yy
     // (using weights_counter as the denominator) and send this with
     // the health packet.
-    float *weights_per_tile_xx;
-    float *weights_per_tile_yy;
+    float weights_per_tile_x[NTILES_MAX];
+    float weights_per_tile_y[NTILES_MAX];
     int weights_counter;
 } health_thread_data_s;
 
@@ -136,9 +139,8 @@ int quit_destroy();
 // Methods for managing data which will be used eventually to send health packets
 int health_manager_init();
 int health_manager_set_info(int status, long obs_id, long subobs_id);
-int health_manager_get_info(int *status, long *obs_id, long *subobs_id, float **weights_per_tile_xx, float **weights_per_tile_yy);
-int health_manager_set_weights_info(float *buffer);
-int health_manager_reset_health_weights_info();
+int health_manager_get_info(int *status, long *obs_id, long *subobs_id, float *weights_per_tile_x, float *weights_per_tile_y);
+int health_manager_set_weights_info(float *buffer, int ntiles);
 int health_manager_destroy();
 
 // Method for compression mode

@@ -314,7 +314,7 @@ int64_t dada_dbfits_io(dada_client_t *client, void *buffer, uint64_t bytes)
         else
         {
           // Update weights in health struct
-          if (health_manager_set_weights_info(ptr_weights) != EXIT_SUCCESS)
+          if (health_manager_set_weights_info(ptr_weights, ctx->ninputs / 2) != EXIT_SUCCESS)
           {
             // Error!
             multilog(log, LOG_ERR, "dada_dbfits_io(): Error setting health weights.\n");
@@ -899,13 +899,6 @@ int process_new_observation(dada_client_t *client, long new_obs_id, long new_sub
 
   // Reset the filenumber
   ctx->fits_file_number = 0;
-
-  // Reset weights counter and array
-  if (health_manager_reset_health_weights_info() != EXIT_SUCCESS)
-  {
-    multilog(log, LOG_ERR, "read_dada_header(): Error resetting health weight data");
-    return -1;
-  }
 
   return EXIT_SUCCESS;
 }

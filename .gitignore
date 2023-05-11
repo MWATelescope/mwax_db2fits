@@ -7,7 +7,6 @@ CMakeFiles
 Makefile
 .vscode
 *.fits
-scripts/__pycache__/
 *.metafits
 tmp/
 .idea
@@ -16,10 +15,11 @@ scripts/env
 *.png
 *.code-workspace
 .python-version
-tests/__pycache__/
+__pycache__/
 *.log
 *.dat
 *.tmp
 tests/test01/make_test01_data
 tests/test02/make_test02_data
 tests/test03/make_test03_data
+tests/test04/make_test04_data

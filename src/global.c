@@ -5,6 +5,8 @@
  * @brief This is the code for anything global
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,8 +89,12 @@ int health_manager_init()
     g_health_manager.obs_id = 0;
     g_health_manager.subobs_id = 0;
     g_health_manager.weights_counter = 0;
-    g_health_manager.weights_per_tile_xx = NULL;
-    g_health_manager.weights_per_tile_yy = NULL;
+
+    for (int i = 0; i < NTILES_MAX; i++)
+    {
+        g_health_manager.weights_per_tile_x[i] = NAN;
+        g_health_manager.weights_per_tile_y[i] = NAN;
+    }
     pthread_mutex_unlock(&g_health_manager_mutex);
 
     return EXIT_SUCCESS;
@@ -114,59 +120,57 @@ int health_manager_set_info(int status, long obs_id, long subobs_id)
 
 /**
  *
- *  @brief A thread-safe way to reset the weights values of g_health_manager.
- *  @returns EXIT_SUCCESS on success.
- */
-int health_manager_reset_health_weights_info()
-{
-    pthread_mutex_lock(&g_health_manager_mutex);
-    g_health_manager.weights_counter = 0;
-    if (g_health_manager.weights_per_tile_xx != NULL)
-    {
-        for (int tile = 0; tile < g_ctx.ninputs / 2; tile++)
-        {
-            g_health_manager.weights_per_tile_xx[tile] = 0;
-            g_health_manager.weights_per_tile_yy[tile] = 0;
-        }
-    }
-    pthread_mutex_unlock(&g_health_manager_mutex);
-    return EXIT_SUCCESS;
-}
-
-/**
- *
  *  @brief A thread-safe way to set the weights values of g_health_manager.
  *  @param[in] buffer - pointer to buffer containing baseline weights
+ *  @param[in] ntiles - number of tiles in observation
  *  @returns EXIT_SUCCESS on success.
  */
-int health_manager_set_weights_info(float *buffer)
+int health_manager_set_weights_info(float *buffer, int ntiles)
 {
     pthread_mutex_lock(&g_health_manager_mutex);
+
     // Update the weights arrays and counter
-
-    // Check if we have initialised the array yet.
-    // We only know the number of tiles we have at this point
-    if (g_health_manager.weights_per_tile_xx == NULL)
-    {
-        // Malloc the arrays
-        g_health_manager.weights_per_tile_xx = calloc(g_ctx.ninputs / 2, sizeof(float));
-        g_health_manager.weights_per_tile_yy = calloc(g_ctx.ninputs / 2, sizeof(float));
-    }
-
     g_health_manager.weights_counter++;
 
     int baseline = 0;
 
-    for (int i = 0; i < g_ctx.ninputs / 2; i++)
-    {
-        for (int j = 0; j < i; j++)
-        {
-            baseline++;
-            int xx_index = baseline * 4; // There are 4 pols per baseline in the weights provided to us
-            int yy_index = xx_index + 3; // Pols are ordered xx, xy, yx, yy, so add 3 to the xx index.
+    // If for some reason we have ntiles from subfile header be > NTILES_MAX we should abort!
+    assert(ntiles <= NTILES_MAX);
 
-            g_health_manager.weights_per_tile_xx[i] += buffer[xx_index];
-            g_health_manager.weights_per_tile_yy[j] += buffer[yy_index];
+    // If weights are all NANs, reset to 0 so we can start to accumulate, otherwise leave as is
+    if (isnanf(g_health_manager.weights_per_tile_x[0]))
+    {
+        for (int i = 0; i < ntiles; i++)
+        {
+            g_health_manager.weights_per_tile_x[i] = 0;
+            g_health_manager.weights_per_tile_y[i] = 0;
+        }
+    }
+
+    // Loop through all baselines
+    for (int i = 0; i < ntiles; i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            //
+            // If we are an autocorrelation, then we get the XX and YY weights
+            // and this is effectively the tile weight for X and Y pols.
+            //
+            if (i == j)
+            {
+                int xx_index = baseline * 4; // There are 4 pols per baseline in the weights provided to us.
+                int yy_index = xx_index + 3; // Pols are ordered xx, xy, yx, yy, so add 3 to the xx index ot get yy.
+
+                g_health_manager.weights_per_tile_x[i] += buffer[xx_index];
+                g_health_manager.weights_per_tile_y[i] += buffer[yy_index];
+
+#ifdef DEBUG
+                multilog(g_ctx.log, LOG_DEBUG, "health_manager_set_weights_info(): counter = %d, tile = %d, weight.x = %f, weight.y = %f, cuml weight.x = %f, cuml weight.y = %f\n", g_health_manager.weights_counter, i, buffer[xx_index], buffer[yy_index], g_health_manager.weights_per_tile_x[i], g_health_manager.weights_per_tile_y[i]);
+#endif
+            }
+
+            // incremement baseline counter
+            baseline++;
         }
     }
 
@@ -183,10 +187,5 @@ int health_manager_destroy()
 {
     pthread_mutex_destroy(&g_health_manager_mutex);
 
-    if (g_health_manager.weights_per_tile_xx != NULL)
-    {
-        free(g_health_manager.weights_per_tile_xx);
-        free(g_health_manager.weights_per_tile_yy);
-    }
     return EXIT_SUCCESS;
 }

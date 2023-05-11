@@ -6,7 +6,13 @@ mwax_db2fits is a C program that utilises PSRDADA ringbuffers for input. In orde
 
 ## Running tests
 
-Simply: $ ./run_tests.sh
+```bash
+# Build mwax_db2fits in debug
+./build_debug.sh
+
+# Run all the tests
+./run_tests.sh
+```
 
 ## Tests
 
@@ -17,3 +23,11 @@ See [test01/README.md](test01/README.md) for details.
 ### Test 02: Subobs jumps in time by more than 8 seconds
 
 See [test02/README.md](test02/README.md) for details.
+
+### Test 03: Observation gets split into 2 FITS files
+
+See [test03/README.md](test03/README.md) for details.
+
+### Test 04: Weights get correctly produced in health packets
+
+See [test04/README.md](test04/README.md) for details.

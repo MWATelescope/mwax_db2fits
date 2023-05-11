@@ -6,12 +6,7 @@ b) An error in mwax_u2s which causes it to not create a .sub file with the corre
 
 ## Instructions
 
-```bash
-mwax_db2fits$ cd tests
-mwax_db2fits/tests$ build_tests.sh
-mwax_db2fits/tests$ cd test02
-mwax_db2fits/tests/test02$ ./run_test01.sh
-```
+See [README.MD](../README.MD)
 
 ## Objectives
 

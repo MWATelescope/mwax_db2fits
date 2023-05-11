@@ -169,5 +169,9 @@ void print_usage()
  */
 void print_version()
 {
-    printf("mwax_db2fits v%d.%d.%d\n", MWAX_DB2FITS_VERSION_MAJOR, MWAX_DB2FITS_VERSION_MINOR, MWAX_DB2FITS_VERSION_PATCH);
+#ifdef DEBUG
+    printf("mwax_db2fits v%d.%d.%d (debug)\n", MWAX_DB2FITS_VERSION_MAJOR, MWAX_DB2FITS_VERSION_MINOR, MWAX_DB2FITS_VERSION_PATCH);
+#else
+    printf("mwax_db2fits v%d.%d.%d (release)\n", MWAX_DB2FITS_VERSION_MAJOR, MWAX_DB2FITS_VERSION_MINOR, MWAX_DB2FITS_VERSION_PATCH);
+#endif
 }

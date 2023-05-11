@@ -2,6 +2,12 @@
 
 Changes in each release are listed below.
 
+## 1.0.0 11-May-2023
+
+* Implemented weights average being sent in health packets. See README.md for info on the packet format. Fixes #9.
+* Added new tests for this new feature.
+* Added better tests and did some refactoring for existing tests.
+
 ## 0.12.2 10-May-2023
 
 * Rebuilt with fixed version of mwax_common which resolves issue with detection of VCS mode for MWAX_BUFFER and QUIT modes.

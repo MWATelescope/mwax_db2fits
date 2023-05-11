@@ -2,12 +2,7 @@
 
 ## Instructions
 
-```bash
-mwax_db2fits$ cd tests
-mwax_db2fits/tests$ build_tests.sh
-mwax_db2fits/tests$ cd test01
-mwax_db2fits/tests/test01$ ./run_test01.sh
-```
+See [README.MD](../README.MD)
 
 ## Objectives
 
